@@ -145,12 +145,20 @@ func SetVariable[T any](scope ScopeContextBase, key string, value T)
 There are a group of components registered by the framework itself, developers can resolve them by type and use them as necessary:
 
 ​        Dependency Type: dep.LifecycleController
+
 ​        Dependency Type: dep.ScopeFactory
+
 ​        Dependency Type: hosting.HostAsyncOperator
+
 ​        Dependency Type: hosting.FunctionProcessor
+
 ​        Dependency Type: logger.LoggerFactory
+
 ​        Dependency Type: dep.Scope
+
 ​        Dependency Type: hosting.Host
+
+
 
 ### Platform Specific Components
 
