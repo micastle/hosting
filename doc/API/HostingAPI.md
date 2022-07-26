@@ -68,7 +68,14 @@ below is the API for developers to configure their components:
 
 ```go
 ConfigureComponents(configure ConfigureComponentsMethod) HostBuilder
+
+// ConfigureComponentsMethod syntax
+type ConfigureComponentsMethod func(context BuilderContext, components dep.ComponentCollectionEx)
 ```
+
+In the passed-in configure method, developer should register their dependencies through the component collection interface with APIs described in [Common API](./CommonAPI.md).
+
+
 
 Below is an example to run a basic loop in your app:
 
@@ -103,3 +110,80 @@ func Test_looper_basic(t *testing.T) {
 }
 ```
 
+## Extra APIs for Host Concepts
+
+Hosting framework introduced a few new concepts, like Service, Looper, Looper Processor, etc. Below are the new APIs regarding to these concepts.
+
+### Service APIs
+
+```go
+func UseService[T any](builder HostBuilder, createService FreeStyleServiceFactoryMethod)
+```
+
+### Processor APIs
+
+```go
+func RegisterFuncProcessor[T FunctionProcessor](collection dep.ComponentCollectionEx, processorFunc dep.FreeStyleProcessorMethod)
+
+func UseProcessor[T any](group ConfigureGroupContext, condition ConditionMethod)
+```
+
+
+
+### Loop Variable APIs
+
+```go
+func GetVariable[T any](scope ScopeContextBase, key string) T
+
+func SetVariable[T any](scope ScopeContextBase, key string, value T)
+```
+
+
+
+### Utility Component APIs
+
+There are a group of components registered by the framework itself, developers can resolve them by type and use them as necessary:
+
+​        Dependency Type: dep.LifecycleController
+​        Dependency Type: dep.ScopeFactory
+​        Dependency Type: hosting.HostAsyncOperator
+​        Dependency Type: hosting.FunctionProcessor
+​        Dependency Type: logger.LoggerFactory
+​        Dependency Type: dep.Scope
+​        Dependency Type: hosting.Host
+
+### Platform Specific Components
+
+#### WinServiceRunner
+
+Only available on Windows.
+
+```go
+type WinServiceRunner interface {
+	AsyncAppRunner
+}
+```
+
+#### WinSVC
+
+Only available on Windows.
+
+```go
+type WinSVC interface {
+	Initialize(ctxt dep.ServiceContext, svcName string) WinSVC
+	SetStopSignalCallback(func(os.Signal) bool)
+	SetStartStoppingCallback(callback func(StopReason))
+	SetStoppingStatusChecker(config *StatusCheckerConfig, checker LoopProcessor)
+
+	ServiceMain()
+
+	// request for stop the service, trigger only without waiting
+	TriggerStop()
+}
+```
+
+#### SystemdService
+
+Only available on Linux.
+
+**[TODO] Not implemented yet at this point.**
