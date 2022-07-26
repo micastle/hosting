@@ -22,9 +22,46 @@ Below is the link to docs of relevant runtime libraries in dot net:
 
 ## Usage
 
+### Two Sets of APIs
+
+The framework provides two sets of APIs for developers to use. you can choose either of them for your purpose:
+
+- Integrated API: Hosting
+
+  Hosting API is similar to the Microsoft.Extensions.Hosting framework, which encapsulate your whole application as a Host and runs services inside the host. It is integrated with the whole design of your application. You will need to understand the concepts like Host, Service, Components, configuration, logging, etc. you will also leverage the framework API to run the application via concept like Service, AppRunner, Looper and Processor, etc.
+
+  For new applications, you should use this API to fully adopt the Dependency Injection pattern and leverage the advantage of it.
+
+- Standalone API: Activator
+
+  Standalone API does not involve deeply on how your application will be executed, but focus on how components are registered and inject dependency as needed. it manages only the dependency of components in your application. In this API we don't provide concept like host, service, looper, processor. Instead, dependency types, lifecycle, scope are the major focus we can help for your application. 
+
+  You can use this API for legacy code, thus no need to refactor the whole of your code.
+
+Both these two sets of API share largely the same implementation underneath on the dependency management and injection functionalities. the concept is also the same on DI and IoC.
+
+Sections:
+
+- [Shared APIs for Dependency Registration and Injection](./API/CommonAPI.md)
+- [Standalone APIs: Activator](./API/StandaloneAPI.md)
+- [Integrated APIs: Hosting](./API/HostingAPI.md)
+
+### Example
+
 Here is an hello world example to show how to use the framework:
 
 [Helloworld](./samples/Helloworld.md)
+
+[Console Application](./samples/Console Application.md)
+
+[Activator Sample](./samples/Activator Sample.md)
+
+### Diagnostic Support
+
+Tools:
+
+- [Diagnose Issues](./howto/DiagnoseIssues.md)
+- [Cyclic Dependency Detection](./concepts/DependencyInjection.md#Cyclic Dependency Detection)
 
 
 
