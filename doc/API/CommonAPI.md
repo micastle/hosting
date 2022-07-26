@@ -155,12 +155,18 @@ Then develop can call above API with the context of component C, and it will pri
 Below is an example :
 
 > cyclic dependency detected on scoped[TestScope] component: dep.FirstInterface
+>
 > Dependency Stack of Component[dep.SecondInterface]:
->         <TestScope> Component: dep.SecondInterface {type=blob}
->         <TestScope> Component: dep.FirstInterface
->         <TestScope> Component: TestScope
->         <Global> Host: Test
->         <Root>
+>
+> ​     <TestScope> Component: dep.SecondInterface {type=blob}
+>
+> ​     <TestScope> Component: dep.FirstInterface
+>
+> ​     <TestScope> Component: TestScope
+>
+> ​     <Global> Host: Test
+>
+> ​     <Root>
 
 #### Ancestor Stack: 
 
@@ -169,10 +175,14 @@ Ancestor Stack tracks the scope chain where the dependency lives in.
 Below is an example:
 
 > Ancestor Stack of nestedScope, context Component[*dep.Scope]:
->         Scope:<ScopeObject@0xc0001da950>
->         Scope:<TestScope@0xc0001da630>
->         Scope:<Global>
->         <Root>
+>
+> ​     Scope:<ScopeObject@0xc0001da950>
+>
+> ​     Scope:<TestScope@0xc0001da630>
+>
+> ​     Scope:<Global>
+>
+> ​     <Root>
 
 ## Scope APIs
 
