@@ -97,8 +97,9 @@ func Test_Activator_scopefactory(t *testing.T) {
 	})
 
 	inst := GetComponent[ScopeInterface](avt)
-	dep.Using[ScopeInterface](inst, func(ctxt dep.Context, logger logger.Logger) {
+	dep.Using(inst, func(ctxt dep.Context, scope dep.Scope, logger logger.Logger) {
 		logger.Infof("scope func start with context %s, %s", ctxt.Type(), ctxt.Name())
+		logger.Infof("scope: type - %s, id - %s", scope.GetTypeName(), scope.GetScopeId())
 	})
 }
 

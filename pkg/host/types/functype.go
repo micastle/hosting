@@ -13,6 +13,8 @@ type FuncType interface {
 	Name() string
 
 	GetNumOfOutput() int
+	GetOutput(index int) DataType
+
 	GetOutputType() DataType
 }
 
@@ -46,10 +48,13 @@ func (ft *DefaultFuncType) GetNumOfOutput() int {
 	return ft.rawType.NumOut()
 }
 func (ft *DefaultFuncType) GetOutputType() DataType {
-	if ft.rawType.NumOut() != 1 {
-		panic(fmt.Errorf("number of func outputs is not 1, %s", ft.rawType.String()))
+	return ft.GetOutput(0)
+}
+func (ft *DefaultFuncType) GetOutput(index int) DataType {
+	if ft.rawType.NumOut() <= index {
+		panic(fmt.Errorf("output index %d exceeded number of func outputs %d, %s", index, ft.rawType.NumOut(), ft.rawType.String()))
 	}
-	return from(ft.rawType.Out(0))
+	return from(ft.rawType.Out(index))
 }
 
 type InputProvider func(index int, argType DataType) interface{}

@@ -444,13 +444,15 @@ func FuncMultiOutput(value int) (*TestStruct, int) {
 	return &TestStruct{value: value}, value
 }
 func TestFuncOutputType_negative(t *testing.T) {
-	defer test.AssertPanicContent(t, "number of func outputs is not 1", "panic content is not expected")
+	defer test.AssertPanicContent(t, "output index 2 exceeded number of func outputs 2, func(int) (*types.TestStruct, int)", "panic content is not expected")
 
 	funcType := GetFuncType(FuncMultiOutput)
 	ty := funcType.GetOutputType()
 	if ty == nil {
 		t.Error("func output type for FuncMultiOutput should not be nil")
 	}
+	_ = funcType.GetOutput(2)
+
 }
 
 func TestFuncTypeAPI_negative(t *testing.T) {

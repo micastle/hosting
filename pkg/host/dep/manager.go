@@ -152,23 +152,33 @@ func (cm *DefaultComponentManager) AddConfiguration(configuration interface{}) {
 
 func (cm *DefaultComponentManager) validateFreeStyleFactoryMethod(createInstance FreeStyleFactoryMethod, interfaceTypes ...types.DataType) {
 	funcType := types.GetFuncType(createInstance)
-	if funcType.GetNumOfOutput() != 1 {
-		panic(fmt.Errorf("factory method should return one and only one value, type"))
+	if funcType.GetNumOfOutput() > 2 {
+		panic(fmt.Errorf("factory method should return no more than 2 outputs"))
 	}
-	// validate return type is compatible with the interface type to be registered
-	outputType := funcType.GetOutputType()
-	if outputType.IsAny() {
-		if cm.options.AllowTypeAnyFromFactoryMethod {
-			fmt.Printf("fatory method returns interface{}, allowed but not recommended, skip checking type compatibility\n")
-		} else {
-			panic(fmt.Errorf("not allowed to register factory method with return type interface{}"))
+	if funcType.GetNumOfOutput() >= 2 {
+		errType := funcType.GetOutput(1)
+		if !errType.CheckCompatible(types.Get[error]()) {
+			panic(fmt.Errorf("second output of factory method should of type error, actual - %s", errType.FullName()))
 		}
-	} else {
-		for _, interfaceType := range interfaceTypes {
-			if !outputType.CheckCompatible(interfaceType) {
-				panic(fmt.Errorf("func output type(%s) is not compatible with interface type(%s) to be registered", outputType.FullName(), interfaceType.FullName()))
+	}
+	if funcType.GetNumOfOutput() >= 1 {
+		// validate return type is compatible with the interface type to be registered
+		outputType := funcType.GetOutputType()
+		if outputType.IsAny() {
+			if cm.options.AllowTypeAnyFromFactoryMethod {
+				fmt.Printf("fatory method returns interface{}, allowed but not recommended, skip checking type compatibility\n")
+			} else {
+				panic(fmt.Errorf("not allowed to register factory method with return type interface{}"))
+			}
+		} else {
+			for _, interfaceType := range interfaceTypes {
+				if !outputType.CheckCompatible(interfaceType) {
+					panic(fmt.Errorf("func output type(%s) is not compatible with interface type(%s) to be registered", outputType.FullName(), interfaceType.FullName()))
+				}
 			}
 		}
+	} else {
+		panic(fmt.Errorf("factory method should return at least one output"))
 	}
 }
 
