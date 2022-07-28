@@ -54,34 +54,6 @@ A few constraints on dependency registration:
 
 
 
-## Built-In Dependencies
-
-Built-in dependencies are registered by the framework itself. You can use these system dependencies directly in your code through injection.
-
-Registered system dependencies(10)
-
-​    Dependency Type: *logger.LoggerFactory
-
-​    Dependency Type: *dep.ContextualProvider
-
-​    Dependency Type: *hosting.Host
-
-​    Dependency Type: *hosting.HostAsyncOperator
-
-​    Dependency Type: *hosting.AppRunner
-
-​    Dependency Type: *hosting.AsyncAppRunner
-
-​    Dependency Type: *hosting.Looper
-
-​    Dependency Type: *hosting.ProcessorGroup
-
-​    Dependency Type: *hosting.FunctionProcessor
-
-​    Dependency Type: *hosting.WinSVC
-
-
-
 ## Dependency Injection
 
 Dependency injection can apply to both component category and configuration category, we don't differentiate a dependency is a configuration or a component. 

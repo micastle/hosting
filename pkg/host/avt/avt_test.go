@@ -6,8 +6,8 @@ import (
 
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/dep"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/logger"
-	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/test"
+	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
 func Test_Activator_basic(t *testing.T) {
@@ -18,6 +18,52 @@ func Test_Activator_basic(t *testing.T) {
 
 	ano := GetComponent[AnotherInterface](avt)
 	ano.Another()
+}
+
+func runTest_Activator_extended_debug_defaultlogging(t *testing.T, debug bool, loggerFactory logger.LoggerFactory) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+		dep.RegisterTransient[AnotherInterface](components, NewAnotherStruct)
+	}
+	avt := CreateActivatorEx(debug, "UnitTest", registerComponents, loggerFactory)
+
+	ano := GetComponent[AnotherInterface](avt)
+	ano.Another()
+}
+
+func Test_Activator_extended(t *testing.T) {
+	loggerFactory := logger.NewDefaultLoggerFactory()
+	tests := []struct {
+		name          string
+		debug         bool
+		loggerFactory logger.LoggerFactory
+	}{
+		{
+			"debug_with_default_logger",
+			true,
+			nil,
+		},
+		{
+			"debug_with_custom_logger",
+			true,
+			loggerFactory,
+		},
+		{
+			"release_with_default_logger",
+			true,
+			nil,
+		},
+		{
+			"release_with_custom_logger",
+			true,
+			loggerFactory,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runTest_Activator_extended_debug_defaultlogging(t, tt.debug, tt.loggerFactory)
+		})
+	}
 }
 
 func Test_Activator_comp_not_registered(t *testing.T) {
@@ -65,7 +111,6 @@ func Test_Activator_sys_component(t *testing.T) {
 		t.Errorf("unexpected activator instance, actual %p, expected %p", inst, avt)
 	}
 }
-
 
 // TODO: multi-impls support
 func Test_Activator_multi_implementations(t *testing.T) {

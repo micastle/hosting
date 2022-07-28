@@ -7,8 +7,8 @@ import (
 
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/dep"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/logger"
-	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/test"
+	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
 type TestResultWriter interface {
@@ -130,6 +130,44 @@ func Test_looper_basic(t *testing.T) {
 	}
 }
 
+func Test_looper_context(t *testing.T) {
+	hostName := "Test"
+
+	builder := NewDefaultHostBuilder()
+	builder.SetHostName(hostName)
+
+	builder.UseLoop("Test", func(context ServiceContext, looper ConfigureLoopContext) {
+		looper.SetInterval(time.Duration(500) * time.Millisecond)
+		looper.UseFuncProcessor(func(context dep.Context, scope ScopeContext) {
+			fmt.Printf("context: type - %s, name - %s \n", context.Type(), context.Name())
+			looperCtxt := scope.GetLooperContext().(ServiceContextEx)
+			fmt.Printf("looper: type - %s, name - %s \n", looperCtxt.Type(), looperCtxt.Name())
+			deps := looperCtxt.GetTracker().GetDependents()
+			for _, dep := range deps {
+				fmt.Printf("dependent: type - %s, name - %s \n", dep.Type(), dep.Name())
+			}
+			if deps[0].Type() != dep.ContextType_Host {
+				t.Errorf("looper context type is not Host: %s", deps[0].Type())
+			}
+		})
+	})
+
+	host := builder.Build()
+
+	provider := host.GetComponentProvider()
+	runner := dep.GetComponent[AsyncAppRunner](provider)
+
+	logger := host.GetLogger()
+	logger.Infow("Host ready, starting", "name", host.GetName())
+
+	go func() {
+		time.Sleep(time.Duration(750) * time.Millisecond)
+		runner.SendStopSignal()
+	}()
+
+	host.Run()
+}
+
 func Test_looper_processor_type_not_interface(t *testing.T) {
 	defer test.AssertPanicContent(t, "specified processor type is not an interface: hosting.MyConfig", "panic content not expected")
 
@@ -146,7 +184,8 @@ func Test_looper_processor_type_not_interface(t *testing.T) {
 	builder.Build()
 }
 
-type MyInterface interface {}
+type MyInterface interface{}
+
 func Test_looper_processor_type_not_LoopProcessor(t *testing.T) {
 	defer test.AssertPanicContent(t, "specified processor type does not implement LoopProcessor interface", "panic content not expected")
 

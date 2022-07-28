@@ -52,7 +52,7 @@ func (hc *DefaultHostContext) Initialize() {
 
 	// This is the first time we get logger factory, should initialize it before using
 	loggerFactory := hc.GetLoggerFactory()
-	loggerFactory.Initialize(hc.GetRunningMode() == Debug)
+	loggerFactory.Initialize(hc.Name(), hc.IsDebug())
 
 	hc.logger = loggerFactory.GetLogger(dep.GetDefaultLoggerNameForComponent(hc))
 
@@ -102,7 +102,6 @@ func (hc *DefaultHostContext) GetLogger() logger.Logger {
 	return hc.GetLoggerFactory().GetDefaultLogger()
 }
 func (hc *DefaultHostContext) GetLoggerWithName(name string) logger.Logger {
-	hc.logger.Debugw("inject logger", "type", hc.Type(), "host", hc.Name(), "name", name)
 	return hc.GetLoggerFactory().GetLogger(name)
 }
 
@@ -110,16 +109,13 @@ func (hc *DefaultHostContext) AddDependency(types.DataType, dep.ComponentGetter)
 
 }
 func (hc *DefaultHostContext) GetConfiguration(configType types.DataType) interface{} {
-	hc.logger.Debugw("inject configuration", "type", configType.FullName(), "host", hc.Name())
 	return hc.ComponentProvider.GetConfiguration(configType)
 }
 
 func (hc *DefaultHostContext) GetComponent(interfaceType types.DataType) interface{} {
-	hc.logger.Debugw("inject component", "type", interfaceType.FullName(), "host", hc.Name())
 	return hc.ComponentProvider.GetComponent(interfaceType)
 }
 
 func (hc *DefaultHostContext) CreateWithProperties(interfaceType types.DataType, props dep.Properties) interface{} {
-	hc.logger.Infow("inject component", "type", interfaceType.FullName(), "host", hc.Name())
 	return hc.ComponentProvider.CreateWithProperties(interfaceType, props)
 }

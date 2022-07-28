@@ -5,24 +5,14 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 	"unsafe"
 
-	"go.uber.org/zap/zapcore"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/logger"
-	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/test"
+	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
-
-var initLoggerOnce sync.Once
-
-func InitLoggerForTest() {
-	initLoggerOnce.Do(func() {
-		logger.InitStdOutLogger("UnitTest", zapcore.DebugLevel)
-	})
-}
 
 // create global scope context for top component: host
 func createTopScopeContext(context Context, debug bool, concurrency bool) *DefaultScopeContext {
@@ -45,7 +35,6 @@ func createNewTestScope(hostCtxt HostContextEx, concurrency bool, scopeTypes ...
 	return createNewTestScopeFrom(hostCtxt, globalScope, scopeTypes...)
 }
 func initComponentManager(hostCtxt HostContext, options *ComponentProviderOptions) ComponentManager {
-	InitLoggerForTest()
 	cm := NewDefaultComponentManager(hostCtxt.(HostContextEx), options)
 	cm.Initialize()
 
@@ -56,24 +45,32 @@ func initComponentManager(hostCtxt HostContext, options *ComponentProviderOption
 }
 
 func prepareComponentManagerWithScope(options *ComponentProviderOptions, scopeTypes ...types.DataType) (ComponentManager, ContextEx) {
-	hostCtxt := NewMockContext(ContextType_Host, "Test", nil)
+	hostCtxt := NewMockContext(ContextType_Host, "Test", true, nil)
 	globalScope := createTopScopeContext(hostCtxt, true, options.EnableSingletonConcurrency)
 	hostCtxt.SetScopeContext(globalScope)
 
 	cm := initComponentManager(hostCtxt, options)
 
-	ctxt := NewMockContext(ContextType_Component, "Starter", nil)
+	ctxt := NewMockContext(ContextType_Component, "Starter", true, nil)
 	scopeCtxt := createNewTestScopeFrom(ctxt, globalScope, scopeTypes...)
 	ctxt.SetScopeContext(scopeCtxt)
 	ctxt.SetComponentManager(cm)
+	lf := ctxt.GetLoggerFactory()
+	lf.Initialize("Test", true)
 
 	return cm, ctxt
 }
 func prepareComponentManagerWithOptions(options *ComponentProviderOptions) (ComponentManager, ContextEx) {
-	ctxt := NewMockContext(ContextType_Host, "Test", nil)
+	return prepareComponentManagerWithOptionsEx(options, true)
+}
+func prepareComponentManagerWithOptionsEx(options *ComponentProviderOptions, debug bool) (ComponentManager, ContextEx) {
+	ctxt := NewMockContext(ContextType_Host, "Test", debug, nil)
 	scope := createNewTestScope(ctxt, options.EnableSingletonConcurrency)
 	ctxt.SetScopeContext(scope)
 	cm := initComponentManager(ctxt, options)
+	lf := ctxt.GetLoggerFactory()
+	lf.Initialize("Test", true)
+
 	return cm, ctxt
 }
 func prepareComponentManager(allowFactoryReturnAny bool) (ComponentManager, Context) {
@@ -85,8 +82,8 @@ func prepareComponentManager(allowFactoryReturnAny bool) (ComponentManager, Cont
 func createNewContext(ctxt ContextEx, scopeType types.DataType) ContextEx {
 	scope := ctxt.GetScopeContext()
 	scope = createNewTestScopeFrom(ctxt, scope, scopeType)
-	newCtxt := NewMockContext(ContextType_Component, scopeType.Name(), scope)
-	newCtxt.GetTracker().AddDependents(ctxt)
+	newCtxt := NewMockContext(ContextType_Component, scopeType.Name(), ctxt.IsDebug(), scope)
+	TrackDependent(newCtxt, ctxt)
 	return newCtxt
 }
 
@@ -196,13 +193,13 @@ type MockContext struct {
 	props        Properties
 }
 
-func NewMockContext(ctxtType string, ctxtName string, scopeCtxt ScopeContextEx) *MockContext {
+func NewMockContext(ctxtType string, ctxtName string, debug bool, scopeCtxt ScopeContextEx) *MockContext {
 	var tracker DependencyTracker = nil
 	if scopeCtxt != nil {
 		tracker = NewDependencyTracker(scopeCtxt)
 	}
 	return &MockContext{
-		debug:      true,
+		debug:      debug,
 		ctxtType:   ctxtType,
 		ctxtName:   ctxtName,
 		depTracker: tracker,
@@ -293,7 +290,35 @@ func TestComponentManager_Diagnostics(t *testing.T) {
 	}
 
 	depCtxt := NewComponentContext(scope, cm, types.Of(new(AnotherInterface)))
-	depCtxt.GetTracker().AddDependents(ctxt)
+	TrackDependent(depCtxt, ctxt)
+
+	dependents := depCtxt.GetTracker().GetDependents()
+	for _, ddt := range dependents {
+		fmt.Printf("Dependent: %s - %s\n", ddt.Type(), ddt.Name())
+	}
+
+	PrintDependencyStack(depCtxt)
+}
+
+func TestComponentManager_Diagnostics_release(t *testing.T) {
+	options := NewComponentProviderOptions(InterfaceType, StructType)
+	options.EnableDiagnostics = true
+	cm, ctxt := prepareComponentManagerWithOptionsEx(options, false)
+	ops := cm.GetOptions()
+	if ops.EnableDiagnostics != true {
+		t.Error("diagnostics is not enabled")
+	}
+
+	cm.PrintDiagnostics()
+
+	tracker := ctxt.GetTracker()
+	scope := tracker.GetParent()
+	if !scope.IsGlobal() {
+		t.Error("tracked parent scope for host context should be global")
+	}
+
+	depCtxt := NewComponentContext(scope, cm, types.Of(new(AnotherInterface)))
+	TrackDependent(depCtxt, ctxt)
 
 	dependents := depCtxt.GetTracker().GetDependents()
 	for _, ddt := range dependents {
@@ -492,7 +517,7 @@ func TestComponentManager_RegisterSingleton_return_nil(t *testing.T) {
 
 	cm, ctxt := prepareComponentManager(true)
 
-	RegisterSingleton[AnotherInterface](cm, func() interface{} { return nil})
+	RegisterSingleton[AnotherInterface](cm, func() interface{} { return nil })
 	_ = GetComponent[AnotherInterface](ctxt)
 }
 
@@ -735,6 +760,48 @@ func TestComponentManager_Scoped_OutofScope(t *testing.T) {
 	another.Another()
 
 	t.Errorf("scoped component should not be created out of a scope")
+}
+
+func TestComponentManager_Scoped_SingletonScope_transient(t *testing.T) {
+	options := NewComponentProviderOptions(InterfaceType, StructType)
+	options.AllowTypeAnyFromFactoryMethod = true
+	cm, ctxt := prepareComponentManagerWithOptions(options)
+
+	cm.RegisterSingletonForType(NewActualStructWithContext, types.Get[SecondInterface]())
+	cm.RegisterTransientForType(NewFirstDepOnSecond, types.Get[FirstInterface]())
+
+	ctxt1 := createNewContext(ctxt, ScopeType_None)
+	trans := GetComponentFrom[FirstInterface](cm, ctxt1, nil)
+	scope := trans.GetContext().(ContextEx).GetScopeContext()
+	if scope.IsGlobal() {
+		t.Error("transient comp in anonymous scope should not be global")
+	}
+	singlet := GetComponentFrom[SecondInterface](cm, ctxt1, nil)
+	scope = singlet.GetContext().(ContextEx).GetScopeContext()
+	if !scope.IsGlobal() {
+		t.Error("singleton comp created by transient from anonymous scope should always be global")
+	}
+}
+
+func TestComponentManager_Scoped_SingletonScope_scoped(t *testing.T) {
+	options := NewComponentProviderOptions(InterfaceType, StructType)
+	options.AllowTypeAnyFromFactoryMethod = true
+	cm, ctxt := prepareComponentManagerWithOptions(options)
+
+	cm.RegisterSingletonForType(NewActualStructWithContext, types.Get[SecondInterface]())
+	cm.RegisterScopedForType(NewFirstDepOnSecond, types.Get[FirstInterface]())
+
+	ctxt1 := createNewContext(ctxt, ScopeType_None)
+	scopedInst := GetComponentFrom[FirstInterface](cm, ctxt1, nil)
+	scope := scopedInst.GetContext().(ContextEx).GetScopeContext()
+	if scope.IsGlobal() {
+		t.Error("scoped comp in anonymous scope should not be global")
+	}
+	singlet := GetComponentFrom[SecondInterface](cm, ctxt1, nil)
+	scope = singlet.GetContext().(ContextEx).GetScopeContext()
+	if !scope.IsGlobal() {
+		t.Error("singleton comp created by transient from anonymous scope should always be global")
+	}
 }
 
 func TestComponentManager_Scoped_InScopeAction(t *testing.T) {
@@ -1325,19 +1392,22 @@ func TestComponentManager_Scoped_ThreadSafe(t *testing.T) {
 	}
 }
 
-type Contextable interface{
+type Contextable interface {
 	GetContext() Context
 }
 type FirstInterface interface {
+	Contextable
 	First()
 }
 
 type SecondInterface interface {
+	Contextable
 	Second()
 }
 
 type ActualStruct struct {
-	value int
+	context Context
+	value   int
 }
 
 func NewActualStruct() *ActualStruct {
@@ -1345,7 +1415,15 @@ func NewActualStruct() *ActualStruct {
 		value: 1,
 	}
 }
-
+func NewActualStructWithContext(context Context) *ActualStruct {
+	return &ActualStruct{
+		context: context,
+		value:   1,
+	}
+}
+func (as *ActualStruct) GetContext() Context {
+	return as.context
+}
 func (as *ActualStruct) First() {
 	fmt.Println("First", as.value)
 }
@@ -1360,13 +1438,13 @@ type AnotherInterface interface {
 
 type AnotherStruct struct {
 	context Context
-	value int
+	value   int
 }
 
 func NewAnotherStruct(context Context) *AnotherStruct {
 	return &AnotherStruct{
 		context: context,
-		value: 0,
+		value:   0,
 	}
 }
 func (as *AnotherStruct) GetContext() Context {
@@ -1460,7 +1538,7 @@ func TestComponentManager_AddSingleton_InCompatibleType(t *testing.T) {
 	var failure string
 	done := make(chan bool, 1)
 
-	go func(){
+	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				captured = true
@@ -1622,8 +1700,8 @@ func TestComponentManager_DependencyInjection_Singleton(t *testing.T) {
 	}
 }
 
-func NewFirstDepOnSecond(second SecondInterface) FirstInterface {
-	return NewActualStruct()
+func NewFirstDepOnSecond(context Context, second SecondInterface) FirstInterface {
+	return NewActualStructWithContext(context)
 }
 func NewSecondDepOnFirst(first FirstInterface) SecondInterface {
 	return NewActualStruct()
@@ -1711,7 +1789,6 @@ func TestComponentManager_DependencyInjection_CyclicDependency_Transient(t *test
 	options.TrackTransientRecurrence = true
 	options.MaxAllowedRecurrence = 4
 	cm, ctxt := prepareComponentManagerWithOptions(options)
-
 
 	RegisterTransient[FirstInterface](cm, NewFirstDepOnSecond)
 	RegisterTransient[SecondInterface](cm, NewSecondDepOnFirst)

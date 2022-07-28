@@ -30,6 +30,7 @@ func (rm RunningMode) String() string {
 type HostSettings interface {
 	SetName(name string)
 	SetRunningMode(RunningMode)
+	EnableMemoryStatistics(enable bool)
 }
 
 type DefaultHostSettings struct {
@@ -47,6 +48,9 @@ func (hs *DefaultHostSettings) SetName(name string) {
 }
 func (hs *DefaultHostSettings) SetRunningMode(mode RunningMode) {
 	hs.context.RunningMode = mode
+}
+func (hs *DefaultHostSettings) EnableMemoryStatistics(enable bool) {
+	hs.context.EnableMemoryStatistics = enable
 }
 
 type HostAsyncOperator interface {
@@ -116,9 +120,26 @@ func (h *DefaultGenericHost) GetServices() map[string]Service {
 	return h.hostContext.Services
 }
 
-func (h *DefaultGenericHost) Run() {
-	runner := dep.GetComponent[AppRunner](h.provider)
+func (h *DefaultGenericHost) startMemoryMonitor() {
+	if h.hostContext.builderContext.EnableMemoryStatistics {
+		mon := GetMemoryMonitor()
+		mon.Start()
+	}
+}
+func (h *DefaultGenericHost) stopMemoryMonitor() {
+	if h.hostContext.builderContext.EnableMemoryStatistics {
+		mon := GetMemoryMonitor()
+		mon.Stop()
+	}
+}
 
+func (h *DefaultGenericHost) Run() {
+	// start memory statistics
+	h.startMemoryMonitor()
+	defer h.stopMemoryMonitor()
+
+	// execute registered app runner
+	runner := dep.GetComponent[AppRunner](h.provider)
 	runner.Execute()
 }
 

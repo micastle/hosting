@@ -11,28 +11,35 @@ type ConfigureComponentsMethod func(context BuilderContext, components dep.Compo
 type Activator interface {
 	GetProvider() dep.ComponentProvider
 }
+
 func GetComponent[T any](avt Activator) T {
 	return dep.GetComponent[T](avt.GetProvider())
 }
 
 func CreateActivator(configureComponents ConfigureComponentsMethod) Activator {
-	return buildActivator(true, configureComponents, nil, nil)
+	return buildActivator(true, "", configureComponents, nil, nil)
 }
-func CreateActivatorEx(debug bool, configureComponents ConfigureComponentsMethod, loggerFactory logger.LoggerFactory) Activator {
-	configLoggerFactory := func(context BuilderContext, factoryBuilder LoggerFactoryBuilder) {
-		factoryBuilder.RegisterLoggerFactory(func() logger.LoggerFactory { return loggerFactory })
+func CreateActivatorEx(debug bool, name string, configureComponents ConfigureComponentsMethod, loggerFactory logger.LoggerFactory) Activator {
+	var configLoggerFactory ConfigureLoggerFactoryMethod
+	if loggerFactory != nil {
+		configLoggerFactory = func(context BuilderContext, factoryBuilder LoggerFactoryBuilder) {
+			factoryBuilder.RegisterLoggerFactory(func() logger.LoggerFactory { return loggerFactory })
+		}
 	}
 	configCompProvider := func(context BuilderContext, options *dep.ComponentProviderOptions) {
 		options.AllowTypeAnyFromFactoryMethod = false
-		options.AllowedComponentTypes = []dep.TypeConstraint{dep.InterfacePtrType}
+		options.AllowedComponentTypes = []dep.TypeConstraint{dep.InterfaceType}
 		options.EnableSingletonConcurrency = true
 		options.TrackTransientRecurrence = false
 		options.EnableDiagnostics = debug
 	}
-	return buildActivator(debug, configureComponents, configLoggerFactory, configCompProvider)
+	return buildActivator(debug, name, configureComponents, configLoggerFactory, configCompProvider)
 }
-func buildActivator(debug bool, configureComponents ConfigureComponentsMethod, configLoggerFactory ConfigureLoggerFactoryMethod, configCompProvider ConfigureComponentProviderMethod) Activator {
+func buildActivator(debug bool, name string, configureComponents ConfigureComponentsMethod, configLoggerFactory ConfigureLoggerFactoryMethod, configCompProvider ConfigureComponentProviderMethod) Activator {
 	hostName := types.Of(new(Activator)).Name()
+	if name != "" {
+		hostName = name
+	}
 	runningMode := Release
 	if debug {
 		runningMode = Debug
@@ -72,6 +79,9 @@ func newDefaultActivator(ctxt *DefaultHostContext) *DefaultActivator {
 func (da *DefaultActivator) configureComponents(configure ConfigureComponentsMethod) {
 	builderContext := NewBuilderContext(da.hostContext.builderContext)
 	configure(builderContext, da.hostContext.ComponentCollection)
+}
+func (da *DefaultActivator) getContext() dep.HostContextEx {
+	return da.hostContext
 }
 func (da *DefaultActivator) getRegisteredCount() int {
 	return da.hostContext.ComponentCollection.Count()

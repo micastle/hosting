@@ -35,7 +35,7 @@ func (ab *DefaultActivatorBuilder) ConfigureComponentProvider(configure Configur
 }
 func (ab *DefaultActivatorBuilder) build() *DefaultActivator {
 	//
-	// Stage 0: create host context and builder context, not fully initialized
+	// Stage 0: create builder context and host context, not fully initialized
 	//
 	builderContext := &HostBuilderContext{
 		HostName:    ab.HostName,
@@ -44,9 +44,8 @@ func (ab *DefaultActivatorBuilder) build() *DefaultActivator {
 	hostContext := NewHostContext(builderContext)
 
 	//
-	// Stage 1: prepare host level components: host configuration, component manager and logger factory
+	// Stage 1: prepare host level components: component manager and logger factory
 	//
-	//hb.buildHostConfiguration(builderContext)
 	ab.buildComponentManager(hostContext)
 	ab.registerHostComponents(builderContext)
 

@@ -14,7 +14,8 @@ func ConfigureHost() hosting.HostBuilder {
 
 	hostBuilder.ConfigureHostConfigurationEx(func(host hosting.HostSettings) interface{} {
 		host.SetName("Sample")
-		host.SetRunningMode(hosting.Debug)
+		host.SetRunningMode(hosting.Release)
+		host.EnableMemoryStatistics(true)
 		return &Configuration{}
 	}).ConfigureAppConfigurationEx(
 		func(hostCtxt dep.HostContext) interface{} {

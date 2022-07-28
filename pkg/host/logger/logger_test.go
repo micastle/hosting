@@ -4,22 +4,15 @@ import (
 	"sync"
 	"testing"
 
-	"go.uber.org/zap/zapcore"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
 var initLoggerOnce sync.Once
 
-func InitLoggerForTest() {
-	initLoggerOnce.Do(func() {
-		InitStdOutLogger("UnitTest", zapcore.DebugLevel)
-	})
-}
-
 func TestLoggerFactory(t *testing.T) {
-	InitLoggerForTest()
 
 	logF := NewDefaultLoggerFactory()
+	logF.Initialize("UnitTest", true)
 
 	logger := logF.GetDefaultLogger()
 	logger.Info("test log info")
@@ -48,7 +41,6 @@ func TestLoggerFactory(t *testing.T) {
 }
 
 func TestLoggerUtilityAPIs(t *testing.T) {
-	InitLoggerForTest()
 
 	logger := GetLogger("MyLogger")
 	logger.Info("test log info")

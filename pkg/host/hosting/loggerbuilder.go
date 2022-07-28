@@ -10,11 +10,13 @@ type InitializeLoggingMethod func(config interface{})
 type LoggingBuilder interface {
 	AddConfiguration(configuration interface{}) LoggingBuilder
 	SetLoggingInitializer(loggingInitializer InitializeLoggingMethod)
+	SetLoggerFactory(createLogger logger.LoggerFactoryMethod)
 }
 
 type DefaultLoggingBuilder struct {
 	configuration      interface{}
 	loggingInitializer InitializeLoggingMethod
+	createLogger       logger.LoggerFactoryMethod
 }
 
 func NewDefaultLoggingBuilder() *DefaultLoggingBuilder {
@@ -28,20 +30,29 @@ func (lb *DefaultLoggingBuilder) AddConfiguration(configuration interface{}) Log
 func (lb *DefaultLoggingBuilder) SetLoggingInitializer(loggingInitializer InitializeLoggingMethod) {
 	lb.loggingInitializer = loggingInitializer
 }
+func (lb *DefaultLoggingBuilder) SetLoggerFactory(createLogger logger.LoggerFactoryMethod) {
+	lb.createLogger = createLogger
+}
+
+type LoggerFactoryCreator func(provider dep.ComponentProvider) logger.LoggerFactory
 
 type LoggerFactoryBuilder interface {
-	RegisterLoggerFactory(func() logger.LoggerFactory)
+	RegisterLoggerFactory(LoggerFactoryCreator)
 }
 
 type DefaultLoggerFactoryBuilder struct {
+	hostCtxt *DefaultHostContext
 	cm dep.ComponentManager
 }
 
-func NewDefaultLoggerFactoryBuilder(cm dep.ComponentManager) *DefaultLoggerFactoryBuilder {
-	return &DefaultLoggerFactoryBuilder{cm: cm}
+func NewDefaultLoggerFactoryBuilder(hostCtxt *DefaultHostContext, cm dep.ComponentManager) *DefaultLoggerFactoryBuilder {
+	return &DefaultLoggerFactoryBuilder{
+		hostCtxt: hostCtxt,
+		cm: cm,
+	}
 }
 
-func (lfb *DefaultLoggerFactoryBuilder) RegisterLoggerFactory(createInstance func() logger.LoggerFactory) {
-	loggerFactory := createInstance()
+func (lfb *DefaultLoggerFactoryBuilder) RegisterLoggerFactory(createInstance LoggerFactoryCreator) {
+	loggerFactory := createInstance(lfb.hostCtxt)
 	dep.AddComponent[logger.LoggerFactory](lfb.cm, dep.Factorize(loggerFactory))
 }

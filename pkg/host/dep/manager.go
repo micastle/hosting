@@ -89,19 +89,20 @@ func (cm *DefaultComponentManager) Initialize() {
 
 	AddComponent[LifecycleController](cm, func(context Context, interfaceType types.DataType, props Properties) interface{} {
 		compCtxt := NewComponentContext(cm.globalScope, cm, interfaceType)
-		compCtxt.GetTracker().AddDependents(context.(ContextEx))
+		TrackDependent(compCtxt, context.(ContextEx))
 		lcOptions := GetConfig[LifecycleOptions](context)
 		return LifecycleController(NewLifecycleController(compCtxt, lcOptions))
 	})
 	AddComponent[DepInjector](cm, func(context Context, interfaceType types.DataType, props Properties) interface{} {
-			compCtxt := NewComponentContext(cm.globalScope, cm, interfaceType)
-			compCtxt.GetTracker().AddDependents(context.(ContextEx))
-			return DepInjector(NewDependencyInjector(compCtxt))
-		})
+		compCtxt := NewComponentContext(cm.globalScope, cm, interfaceType)
+		TrackDependent(compCtxt, context.(ContextEx))
+		return DepInjector(NewDependencyInjector(compCtxt))
+	})
 	AddComponent[Scope](cm, func(depCtxt Context, interfaceType types.DataType, props Properties) interface{} {
 		parentScope := depCtxt.(ContextEx).GetScopeContext()
 		scopeCtxt := NewScopeContext(parentScope)
 		compCtxt := NewComponentContext(scopeCtxt, cm, types.Of(new(Scope)))
+		TrackDependent(compCtxt, depCtxt.(ContextEx))
 		return ScopeEx(NewScope(compCtxt))
 	})
 
@@ -200,7 +201,7 @@ func (cm *DefaultComponentManager) AddSingletonForTypes(createInstance FreeStyle
 	}
 	cm.addSingletonWithContext(createInstance, createCtxt, interfaceTypes...)
 }
-func (cm *DefaultComponentManager)AddSingletonWithContext(createInstance FreeStyleFactoryMethod, createCtxt ContextFactoryMethod, interfaceTypes ...types.DataType) {
+func (cm *DefaultComponentManager) AddSingletonWithContext(createInstance FreeStyleFactoryMethod, createCtxt ContextFactoryMethod, interfaceTypes ...types.DataType) {
 	for _, interfaceType := range interfaceTypes {
 		cm.options.ValidateComponentTypeAllowed(interfaceType)
 	}

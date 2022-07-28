@@ -1,15 +1,12 @@
 package avt
 
 import (
-	"context"
-
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/dep"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/logger"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
 type DefaultHostContext struct {
-	RawContext     context.Context
 	scopeCtxt      *dep.DefaultScopeContext
 	depTracker     dep.DependencyTracker
 	builderContext *HostBuilderContext
@@ -26,7 +23,6 @@ type DefaultHostContext struct {
 func NewHostContext(builderContext *HostBuilderContext) *DefaultHostContext {
 	debug := builderContext.RunningMode == Debug
 	return &DefaultHostContext{
-		RawContext:     context.Background(),
 		scopeCtxt:      dep.NewGlobalScopeContext(debug),
 		depTracker:     dep.NewDependencyTracker(nil),
 		builderContext: builderContext,
@@ -50,7 +46,7 @@ func (hc *DefaultHostContext) Initialize() {
 
 	// This is the first time we get logger factory, should initialize it before using
 	loggerFactory := hc.GetLoggerFactory()
-	loggerFactory.Initialize(hc.GetRunningMode() == Debug)
+	loggerFactory.Initialize(hc.Name(), hc.IsDebug())
 
 	hc.logger = loggerFactory.GetLogger(dep.GetDefaultLoggerNameForComponent(hc))
 
@@ -92,10 +88,6 @@ func (cc *DefaultHostContext) GetProperties() dep.Properties {
 	return nil
 }
 
-func (hc *DefaultHostContext) GetRawContext() context.Context {
-	return hc.RawContext
-}
-
 func (hc *DefaultHostContext) GetLoggerFactory() logger.LoggerFactory {
 	return dep.GetComponent[logger.LoggerFactory](hc.ComponentProvider)
 }
@@ -128,7 +120,7 @@ func (hc *DefaultHostContext) getContextDependency(depType types.DataType) inter
 	return hc.scopeCtxt.GetDependency(depType)
 }
 func (hc *DefaultHostContext) CreateWithProperties(interfaceType types.DataType, props dep.Properties) interface{} {
-	hc.logger.Infow("inject component", "type", interfaceType.FullName(), "host", hc.Name())
+	hc.logger.Debugw("inject component", "type", interfaceType.FullName(), "host", hc.Name())
 	// match dependency of current context including ancestor scopes
 	inst := hc.getContextDependency(interfaceType)
 	if inst != nil {

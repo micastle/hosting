@@ -61,6 +61,12 @@ type ContextEx interface {
 	GetScopeContext() ScopeContextEx
 }
 
+func TrackDependent(compCtxt ContextEx, dependent ContextEx) {
+	if compCtxt.IsDebug() {
+		compCtxt.GetTracker().AddDependents(dependent)
+	}
+}
+
 type ScopeContext interface {
 	ContextBase
 
@@ -175,6 +181,11 @@ func PrintDependencyStackForScenario(ctxt Context, scenario string) {
 			fmt.Printf("\t<%s> %s: %s %s\n", scopeId, context.Type(), context.Name(), props.String())
 		} else {
 			fmt.Printf("\t<%s> %s: %s\n", scopeId, context.Type(), context.Name())
+		}
+
+		if !context.IsDebug() {
+			fmt.Printf("\t<Unknown> -- debug is not enabled --\n")
+			break
 		}
 
 		// get the first dependenct which triggers the instantiation of the component

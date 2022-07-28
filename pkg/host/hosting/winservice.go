@@ -24,7 +24,7 @@ import (
 )
 
 func registerPlatformComponents(components dep.ComponentCollection) {
-	components.RegisterTransientForType(NewWinSVC, types.Of(new(WinSVC)))
+	dep.RegisterTransient[WinSVC](components, NewWinSVC)
 }
 
 //
@@ -74,7 +74,7 @@ func NewWinServiceRunner(context dep.Context, host HostAsyncOperator, winSvc Win
 
 	statusChecker.Initialize(
 		context,
-		types.Of(new(WinSvcRunnerCheckStoppingProcessor)),
+		types.Get[WinSvcRunnerCheckStoppingProcessor](),
 		func(context dep.Context, interfaceType types.DataType, scopeCtxt ScopeContext) {
 			wsr.checkStoppingStatus(scopeCtxt)
 		},
@@ -137,7 +137,7 @@ type LoopContextForWinSvcRunner struct {
 	parent dep.ContextEx
 }
 
-func NewLoopContextFromWinServiceRunner(ctxt dep.ContextEx) dep.ServiceContext {
+func NewLoopContextFromWinServiceRunner(ctxt dep.ContextEx) ServiceContext {
 	return &LoopContextForWinSvcRunner{parent: ctxt}
 }
 
@@ -178,7 +178,7 @@ type WinSVCConfig struct {
 }
 
 type WinSVC interface {
-	Initialize(ctxt dep.ServiceContext, svcName string) WinSVC
+	Initialize(ctxt ServiceContext, svcName string) WinSVC
 	SetStopSignalCallback(func(os.Signal) bool)
 	SetStartStoppingCallback(callback func(StopReason))
 	SetStoppingStatusChecker(config *StatusCheckerConfig, checker LoopProcessor)
@@ -190,7 +190,7 @@ type WinSVC interface {
 }
 
 type DefaultWinSVC struct {
-	context               dep.ServiceContext
+	context               ServiceContext
 	logger                logger.Logger
 	config                *WinSVCConfig
 	done                  chan os.Signal
@@ -221,7 +221,7 @@ func NewWinSVC(context dep.Context) *DefaultWinSVC {
 	}
 }
 
-func (ws *DefaultWinSVC) Initialize(ctxt dep.ServiceContext, svcName string) WinSVC {
+func (ws *DefaultWinSVC) Initialize(ctxt ServiceContext, svcName string) WinSVC {
 	ws.context = ctxt
 	ws.config.ServiceName = svcName
 
@@ -506,12 +506,12 @@ func (ws *DefaultWinSVC) setPreShutdownTimeOutInMilliSec(timeout uint32) error {
 }
 
 type WinServiceLoopGlobalContext struct {
-	context   dep.ServiceContext
+	context   ServiceContext
 	svcName   string
 	Variables *VariableSet
 }
 
-func NewWinSvcLoopGlobalContext(context dep.ServiceContext, svcName string) LoopGlobalContext {
+func NewWinSvcLoopGlobalContext(context ServiceContext, svcName string) LoopGlobalContext {
 	return &WinServiceLoopGlobalContext{
 		context:   context,
 		svcName:   svcName,
@@ -522,11 +522,11 @@ func NewWinSvcLoopGlobalContext(context dep.ServiceContext, svcName string) Loop
 func (wslc *WinServiceLoopGlobalContext) LooperName() string {
 	return wslc.svcName
 }
-func (wslc *WinServiceLoopGlobalContext) GetLooperContext() dep.ServiceContext {
+func (wslc *WinServiceLoopGlobalContext) GetLooperContext() ServiceContext {
 	return wslc.context
 }
 
-func (wslc *WinServiceLoopGlobalContext) HasVariable(key string) bool {
+func (wslc *WinServiceLoopGlobalContext) HasVariable(key string, localScope bool) bool {
 	return wslc.Variables.Exist(key)
 }
 func (wslc *WinServiceLoopGlobalContext) GetVariable(key string) interface{} {

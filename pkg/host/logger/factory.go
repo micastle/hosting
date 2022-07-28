@@ -6,13 +6,16 @@ import (
 )
 
 type LoggerFactory interface {
-	Initialize(debug bool)
+	Initialize(root string, debug bool)
 	GetDefaultLogger() Logger
 	GetLogger(name string) Logger
 }
 
+type LoggerFactoryMethod func(loggerName string) Logger
+
 type DefaultLoggerFactory struct {
 	loggingInitializer func()
+	createLogger LoggerFactoryMethod
 }
 
 func NewDefaultLoggerFactory() *DefaultLoggerFactory {
@@ -22,10 +25,22 @@ func NewDefaultLoggerFactory() *DefaultLoggerFactory {
 func (lf *DefaultLoggerFactory) SetLoggingInitializer(initializer func()) {
 	lf.loggingInitializer = initializer
 }
+func (lf *DefaultLoggerFactory) SetLoggingCreator(createLogger LoggerFactoryMethod) {
+	lf.createLogger = createLogger
+}
 
-func (lf *DefaultLoggerFactory) Initialize(debug bool) {
+func (lf *DefaultLoggerFactory) Initialize(name string, debug bool) {
 	if lf.loggingInitializer == nil {
-		lf.loggingInitializer = func() { InitializeDefaultLogging(GetDefaultLoggingConfiguration(debug)) }
+		lf.loggingInitializer = func() {
+			config := GetDefaultLoggingConfig(debug)
+			config.Name = name
+			InitializeDefaultLogging(config)
+		}
+	}
+	if lf.createLogger == nil {
+		lf.createLogger = func(name string) Logger {
+			return GetLogger(name)
+		}
 	}
 
 	lf.loggingInitializer()
@@ -43,5 +58,5 @@ func (lf *DefaultLoggerFactory) GetLogger(name string) Logger {
 }
 
 func (lf *DefaultLoggerFactory) getLogger(loggerName string) Logger {
-	return GetLogger(loggerName)
+	return lf.createLogger(loggerName)
 }

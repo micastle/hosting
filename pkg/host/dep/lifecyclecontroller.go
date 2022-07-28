@@ -50,19 +50,13 @@ func (lc *DefaultLifecycleController) buildDepInjector(compProvider ComponentPro
 	injector.Initialize(compProvider, contextualDeps)
 	return injector
 }
-func (lc *DefaultLifecycleController) trackDependent(compCtxt ContextEx, dependent ContextEx) {
-	if dependent.IsDebug() {
-		compCtxt.GetTracker().AddDependents(dependent)
-		//PrintDependencyStack(compCtxt)
-	}
-}
 func (lc *DefaultLifecycleController) getComponentFactoryMethod(factoryMethod FreeStyleFactoryMethod, createCtxt ContextFactoryMethod) InternalFactoryMethod {
 	options := lc.options
 	return func(dependent ContextEx, scopeCtxt ScopeContextEx, compType types.DataType, props Properties) (interface{}, ContextEx) {
 		compCtxt := createCtxt(scopeCtxt)
-		lc.trackDependent(compCtxt, dependent)
+		TrackDependent(compCtxt, dependent)
 		if options.PropertiesPassOver {
-		    compCtxt.UpdateProperties(dependent.GetProperties())
+			compCtxt.UpdateProperties(dependent.GetProperties())
 		}
 		if props != nil {
 			compCtxt.UpdateProperties(props)
@@ -95,10 +89,7 @@ func (lc *DefaultLifecycleController) BuildTransientFactoryMethod(compType types
 		if cycled_detected {
 			lc.raiseTransientCyclicDependencyFailure(dependent, interfaceType)
 		}
-		// track dependent context
-		if dependent.IsDebug() {
-			compCtxt.GetTracker().AddDependents(dependent)
-		}
+		TrackDependent(compCtxt, dependent)
 		return instance
 	}
 }
@@ -143,7 +134,7 @@ func (lc *DefaultLifecycleController) BuildSingletonFactoryMethod(compTypes []ty
 		}
 		if inst_exist {
 			// track dependent context for existing instance
-			lc.trackDependent(compCtxt, dependent)
+			TrackDependent(compCtxt, dependent)
 		}
 		return instance
 	}
@@ -182,7 +173,7 @@ func (lc *DefaultLifecycleController) BuildScopedFactoryMethod(compType types.Da
 		}
 		if inst_exist {
 			// track dependent context for existing instance
-			lc.trackDependent(compCtxt, dependent)
+			TrackDependent(compCtxt, dependent)
 		}
 		return instance
 	}
@@ -210,7 +201,7 @@ func (lc *DefaultLifecycleController) buildActionDeps(context ContextEx, actionN
 	ctxtDeps := NewDependencyDictionary[ComponentGetter]()
 	ctxtDeps.AddDependencies(
 		DepInst[Context](context),
-		DepFact[logger.Logger, ComponentGetter](func() any {return context.GetLoggerWithName(actionName)}),
+		DepFact[logger.Logger, ComponentGetter](func() any { return context.GetLoggerWithName(actionName) }),
 	)
 	ctxtDeps.AddDependencies(deps...)
 	return ctxtDeps

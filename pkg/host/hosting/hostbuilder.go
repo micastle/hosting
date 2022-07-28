@@ -138,13 +138,14 @@ func (hb *DefaultHostBuilder) ConfigureLoggingEx(configure ConfigureLoggingMetho
 	hb.ConfigLogging = func(context BuilderContext, factoryBuilder LoggerFactoryBuilder) {
 		loggingBuilder := NewDefaultLoggingBuilder()
 		configure(context, loggingBuilder)
-		if loggingBuilder.loggingInitializer == nil {
-			panic(fmt.Errorf("logging initializer not configured"))
+		if loggingBuilder.loggingInitializer == nil || loggingBuilder.createLogger == nil {
+			panic(fmt.Errorf("logging initializer or creator not configured"))
 		}
 
-		factoryBuilder.RegisterLoggerFactory(func() logger.LoggerFactory {
+		factoryBuilder.RegisterLoggerFactory(func(provider dep.ComponentProvider) logger.LoggerFactory {
 			lf := logger.NewDefaultLoggerFactory()
 			lf.SetLoggingInitializer(func() { loggingBuilder.loggingInitializer(loggingBuilder.configuration) })
+			lf.SetLoggingCreator(loggingBuilder.createLogger)
 			return lf
 		})
 	}
@@ -225,7 +226,7 @@ func (hb *DefaultHostBuilder) buildHostConfiguration(context *HostBuilderContext
 		}
 	}
 
-	fmt.Printf("Host \"%s\": running mode - %v\n", context.HostName, context.RunningMode)
+	fmt.Printf("Host \"%s\": running mode - %v [mem stats: %v]\n", context.HostName, context.RunningMode, context.EnableMemoryStatistics)
 
 	context.Configuration = NewDefaultConfiguration(config)
 }
@@ -252,14 +253,14 @@ func (hb *DefaultHostBuilder) registerHostComponents(context *HostBuilderContext
 	// register Component Manager as ContextualProvider
 	//dep.AddSingleton[dep.ContextualProvider](context.ComponentManager, context.ComponentManager)
 }
-func (hb *DefaultHostBuilder) buildLoggerFactory(context *HostBuilderContext) {
+func (hb *DefaultHostBuilder) buildLoggerFactory(hostCtxt *DefaultHostContext, context *HostBuilderContext) {
 	if hb.ConfigLogging == nil {
 		hb.ConfigLogging = func(ctxt BuilderContext, factoryBuilder LoggerFactoryBuilder) {
-			factoryBuilder.RegisterLoggerFactory(func() logger.LoggerFactory { return logger.NewDefaultLoggerFactory() })
+			factoryBuilder.RegisterLoggerFactory(func(dep.ComponentProvider) logger.LoggerFactory { return logger.NewDefaultLoggerFactory() })
 		}
 	}
 
-	factoryBuilder := NewDefaultLoggerFactoryBuilder(context.ComponentManager)
+	factoryBuilder := NewDefaultLoggerFactoryBuilder(hostCtxt, context.ComponentManager)
 	builderContext := NewBuilderContext(context)
 	hb.ConfigLogging(builderContext, factoryBuilder)
 
@@ -338,15 +339,7 @@ func (hb *DefaultHostBuilder) registerServiceComponents(context *DefaultHostCont
 	// register looper type if used
 	if len(hb.Loopers) > 0 {
 		hb.Logger.Debug("Register looper type: " + types.Get[Looper]().FullName())
-		dep.RegisterTransient[Looper](context.ComponentCollection, func(depCtxt dep.Context) *DefaultLooper {
-			dependent := depCtxt.(dep.ContextEx)
-			scopeCtxt := dependent.GetScopeContext()
-			serviceCtxt := NewLoopContext(scopeCtxt, context.ComponentManager, types.Of(new(Looper)))
-			if serviceCtxt.IsDebug() {
-				serviceCtxt.GetTracker().AddDependents(dependent)
-			}
-			return NewDefaultLooper(serviceCtxt)
-		})
+		context.ComponentManager.AddComponent(createLooper, types.Get[Looper]())
 		dep.RegisterTransient[ProcessorGroup](context.ComponentCollection, func(ctxt dep.Context) *DefaultProcessorGroup {
 			return NewDefaultProcessorGroup(ctxt)
 		})
@@ -400,23 +393,24 @@ func (hb *DefaultHostBuilder) buildHostedServices(context *DefaultHostContext) {
 
 func (hb *DefaultHostBuilder) Build() Host {
 	//
-	// Stage 0: create host context and builder context, not fully initialized
+	// Stage 0: create builder context and prepare host configuration, create host context - not fully initialized
 	//
 	builderContext := &HostBuilderContext{
-		HostName:    hb.HostName,
-		RunningMode: Debug,
+		HostName:               hb.HostName,
+		RunningMode:            Debug,
+		EnableMemoryStatistics: false,
 	}
 	builderContext.Application.Configuration = NewDefaultConfiguration(nil)
+	hb.buildHostConfiguration(builderContext)
 	hostContext := NewHostContext(builderContext)
 
 	//
-	// Stage 1: prepare host level components: host configuration, component manager and logger factory
+	// Stage 1: prepare host level components: component manager and logger factory
 	//
-	hb.buildHostConfiguration(builderContext)
 	hb.buildComponentManager(hostContext)
 	hb.registerHostComponents(builderContext)
 
-	hb.buildLoggerFactory(builderContext)
+	hb.buildLoggerFactory(hostContext, builderContext)
 	// host context ready: logger Factory is initialized ready here
 	hostContext.Initialize()
 

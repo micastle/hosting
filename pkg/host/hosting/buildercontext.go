@@ -9,8 +9,9 @@ type ApplicationContext struct {
 }
 
 type HostBuilderContext struct {
-	HostName    string
-	RunningMode RunningMode
+	HostName               string
+	RunningMode            RunningMode
+	EnableMemoryStatistics bool
 
 	Configuration    Configuration
 	ComponentManager dep.ComponentManager

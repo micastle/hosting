@@ -3,7 +3,6 @@ package hosting
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/dep"
@@ -323,9 +322,7 @@ type DefaultLooper struct {
 	context ServiceContext
 	name    string
 	logger  logger.Logger
-	Done    chan bool
-	stopped bool
-	Timer   *time.Timer
+	runner  *LoopRunner
 
 	// settings
 	timerInterval   time.Duration
@@ -338,11 +335,12 @@ type DefaultLooper struct {
 func NewDefaultLooper(context ServiceContext) *DefaultLooper {
 	lp := &DefaultLooper{
 		context: context,
-		Done:    make(chan bool, 1),
-		stopped: false,
 	}
 	return lp
 }
+
+const minLoopInterval = 500 * time.Millisecond
+const maxStopInterval = 500 * time.Millisecond
 
 func (lp *DefaultLooper) Initialize(settings *LooperSettings) {
 	lp.name = settings.Name
@@ -352,12 +350,25 @@ func (lp *DefaultLooper) Initialize(settings *LooperSettings) {
 	lp.logger = lp.context.GetLoggerWithName(lp.getLoggerName())
 	lp.logger.Debugw("initializing Looper", "name", lp.name)
 
-	lp.Timer = time.NewTimer(lp.timerInterval)
 	lp.processorGroup = dep.GetComponent[ProcessorGroup](lp.context)
 
 	loopContext := NewDefaultLoopContext(lp)
 	lp.processorGroup.SetLooperContext(loopContext)
 	settings.Configure(lp.context, loopContext)
+
+	lp.runner = NewLoopRunner(LoopRunnerSettings{
+		EnableRecover:   lp.enableRecover,
+		MinLoopInterval: minLoopInterval,
+		MaxStopInterval: maxStopInterval,
+	})
+	lp.runner.Initialize(func() any {
+		// initialize looper context before loop start
+		loopContext := NewLoopGlobalContext(lp)
+		if lp.initLoopContext != nil {
+			lp.initLoopContext(loopContext)
+		}
+		return LoopGlobalContext(loopContext)
+	})
 
 	lp.processorGroup.Initialize()
 }
@@ -377,87 +388,33 @@ func (lp *DefaultLooper) getLoggerName() string {
 }
 
 func (lp *DefaultLooper) Run() {
-	lp.runLoops()
+	lp.logger.Debugw("Looper started to run", "name", lp.Name())
+
+	lp.runner.Run(lp.timerInterval, func(ctxt any) {
+		loopContext := ctxt.(LoopGlobalContext)
+		lp.runIteration(loopContext)
+	})
 }
-
-const minLoopInterval = 500 * time.Millisecond
-
-func (lp *DefaultLooper) runLoops() {
-	lp.logger.Debugw("Looper started", "name", lp.Name())
-
-	defer lp.Timer.Stop()
-
-	// initialize looper context before loop start
-	loopContext := NewLoopGlobalContext(lp)
-	if lp.initLoopContext != nil {
-		lp.initLoopContext(loopContext)
-	}
-
-	for {
-		func() {
-			start := time.Now()
-			defer func() {
-				if lp.enableRecover {
-					if r := recover(); r != nil {
-						lp.logger.Errorw("Panic running Looper task", "Name", lp.Name(), "Panic", r)
-					}
-				}
-
-				eclipse := time.Since(start)
-				interval := lp.timerInterval - eclipse
-				if interval < minLoopInterval {
-					interval = minLoopInterval
-				}
-				lp.Timer.Reset(interval)
-			}()
-
-			lp.logger.Debugw("Looper start new loop", "Name", lp.Name())
-			lp.processorGroup.RunNewIteration(loopContext)
-			cost := float64(time.Since(start).Milliseconds())
-			lp.logger.Debugw("Looper run once", "Name", lp.Name(), "Cost(ms)", cost)
-		}()
-		select {
-		case <-lp.Done:
-			lp.logger.Debugw("Looper stopped", "Name", lp.Name())
-			lp.stopped = true
-			return
-		case <-lp.Timer.C:
-			continue
-		}
-	}
+func (lp *DefaultLooper) runIteration(loopContext LoopGlobalContext) {
+	lp.logger.Debugw("Looper start new iteration", "Name", lp.Name())
+	start := time.Now()
+	lp.processorGroup.RunNewIteration(loopContext)
+	cost := float64(time.Since(start).Milliseconds())
+	lp.logger.Debugw("Looper completed one iteration", "Name", lp.Name(), "Cost(ms)", cost)
 }
 
 func (lp *DefaultLooper) Stop(ctx context.Context) error {
 	lp.logger.Debugw("shutting down Looper", "name", lp.Name())
 
-	// stop the loop
-	lp.Done <- true
+	return lp.runner.Stop(ctx)
+}
 
-	// wait for loop to stop
-	pollIntervalBase := time.Millisecond
-	shutdownPollIntervalMax := 500 * time.Millisecond
-	nextPollInterval := func() time.Duration {
-		// Add 10% jitter.
-		interval := pollIntervalBase + time.Duration(rand.Intn(int(pollIntervalBase/10)))
-		// Double and clamp for next time.
-		pollIntervalBase *= 2
-		if pollIntervalBase > shutdownPollIntervalMax {
-			pollIntervalBase = shutdownPollIntervalMax
-		}
-		return interval
-	}
-
-	timer := time.NewTimer(nextPollInterval())
-	defer timer.Stop()
-	for {
-		if lp.stopped {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timer.C:
-			timer.Reset(nextPollInterval())
-		}
-	}
+// utility API: looper factory method
+func createLooper(depCtxt dep.Context, interfaceType types.DataType, props dep.Properties) any {
+	dependent := depCtxt.(dep.ContextEx)
+	scopeCtxt := dependent.GetScopeContext()
+	ctxtProvider := dep.GetComponent[dep.ContextualProvider](dependent)
+	serviceCtxt := NewLoopContext(scopeCtxt, ctxtProvider, interfaceType)
+	dep.TrackDependent(serviceCtxt, dependent)
+	return NewDefaultLooper(serviceCtxt)
 }

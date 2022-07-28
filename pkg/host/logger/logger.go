@@ -36,7 +36,7 @@ type DefaultLoggingConfig struct {
 	Level zapcore.Level
 }
 
-func GetDefaultLoggingConfiguration(debug bool) *DefaultLoggingConfig {
+func GetDefaultLoggingConfig(debug bool) *DefaultLoggingConfig {
 	logLevel := zap.InfoLevel
 	if debug {
 		logLevel = zap.DebugLevel

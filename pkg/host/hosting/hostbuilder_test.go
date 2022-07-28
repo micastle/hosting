@@ -3,12 +3,13 @@ package hosting
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/dep"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/logger"
-	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/test"
+	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
 func Test_HostBuilder_basic(t *testing.T) {
@@ -94,6 +95,31 @@ func Test_HostBuilder_HostConfigurationEx(t *testing.T) {
 			t.Errorf("host config value is not expected: %v", config.value)
 		}
 	}
+}
+
+func Test_HostBuilder_HostConfiguration_memstats(t *testing.T) {
+	hostName := "Test"
+
+	builder := NewDefaultHostBuilder()
+	builder.SetHostName(hostName)
+	builder.ConfigureHostConfigurationEx(func(hs HostSettings) interface{} {
+		hs.SetName("Test")
+		hs.SetRunningMode(Debug)
+		hs.EnableMemoryStatistics(true)
+		return nil
+	})
+
+	host := builder.Build()
+
+	provider := host.GetComponentProvider()
+	runner := dep.GetComponent[AsyncAppRunner](provider)
+
+	go func() {
+		time.Sleep(time.Duration(750) * time.Millisecond)
+		runner.SendStopSignal()
+	}()
+
+	host.Run()
 }
 
 type MyAppConfig struct {
@@ -219,7 +245,12 @@ func Test_HostBuilder_ConfigureLoggingEx(t *testing.T) {
 		loggingBuilder.SetLoggingInitializer(func(config interface{}) {
 			//fmt.Printf("init logging with host name %v", hostname)
 			fmt.Printf("init logging with config of type %s, host name %v", types.Of(config).FullName(), hostname)
-			logger.InitializeDefaultLogging(logger.GetDefaultLoggingConfiguration(true))
+			logConfig := logger.GetDefaultLoggingConfig(true)
+			logConfig.Name = hostName
+			logger.InitializeDefaultLogging(logConfig)
+		})
+		loggingBuilder.SetLoggerFactory(func(name string) logger.Logger {
+			return logger.GetLogger(name)
 		})
 	})
 
@@ -239,9 +270,9 @@ type FakeLoggerFactory struct {
 func NewFakeLoggerFactory() *FakeLoggerFactory {
 	return &FakeLoggerFactory{}
 }
-func (flf *FakeLoggerFactory) Initialize(debug bool) {
+func (flf *FakeLoggerFactory) Initialize(root string, debug bool) {
 	logger.InitializeDefaultLogging(&logger.DefaultLoggingConfig{
-		Name:  "Test",
+		Name:  root,
 		Level: zap.InfoLevel,
 	})
 }
@@ -258,7 +289,7 @@ func Test_HostBuilder_ConfigureLogging(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 	builder.ConfigureLogging(func(context BuilderContext, factoryBuilder LoggerFactoryBuilder) {
-		factoryBuilder.RegisterLoggerFactory(func() logger.LoggerFactory { return NewFakeLoggerFactory() })
+		factoryBuilder.RegisterLoggerFactory(func(dep.ComponentProvider) logger.LoggerFactory { return NewFakeLoggerFactory() })
 	})
 
 	host := builder.Build()
