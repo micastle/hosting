@@ -44,7 +44,7 @@ type Scopable interface {
 }
 
 type ScopeFactory interface {
-	CreateScope(context Context) ScopeEx
+	CreateScope(context Context, props Properties) ScopeEx
 	CreateTypedScope(scopeType types.DataType) ScopeEx
 	CreateScopeFrom(scopeInst Scopable, scopeType types.DataType) ScopeEx
 }
@@ -64,11 +64,11 @@ func NewScopeFactory(context Context) *DefaultScopeFactory {
 	return &DefaultScopeFactory{context: context.(ContextEx)}
 }
 
-func (sf *DefaultScopeFactory) createScope(parent Context, scopeInit ScopeInitializer) ScopeEx {
+func (sf *DefaultScopeFactory) createScope(parent Context, props Properties, scopeInit ScopeInitializer) ScopeEx {
 	// get rid of parent context but create scope directly from contextual provider
 	// this is to avoid get parent scope object, as it is contextual available in scope context
 	provider := GetComponent[ContextualProvider](sf.context)
-	scope := provider.GetOrCreateWithProperties(types.Get[Scope](), parent, nil).(ScopeEx)
+	scope := provider.GetOrCreateWithProperties(types.Get[Scope](), parent, props).(ScopeEx)
 	// this line returns the parent scope object, no new scope created
 	//scope := parent.GetComponent(types.Of(new(Scope))).(ScopeEx)
 
@@ -80,11 +80,11 @@ func (sf *DefaultScopeFactory) createScope(parent Context, scopeInit ScopeInitia
 	return scope
 }
 
-func (sf *DefaultScopeFactory) CreateScope(context Context) ScopeEx {
+func (sf *DefaultScopeFactory) CreateScope(context Context, props Properties) ScopeEx {
 	scopeInit := func(scope ScopeEx) {
 		scope.Initialize(ScopeType_None, scope)
 	}
-	return sf.createScope(context, scopeInit)
+	return sf.createScope(context, props, scopeInit)
 }
 
 var ScopableType types.DataType = types.Of(new(Scopable))
@@ -98,7 +98,7 @@ func (sf *DefaultScopeFactory) CreateTypedScope(scopeType types.DataType) ScopeE
 	scopeInit := func(scope ScopeEx) {
 		scope.Initialize(scopeType, scopeInst)
 	}
-	return sf.createScope(scopeInst.Context(), scopeInit)
+	return sf.createScope(scopeInst.Context(), nil, scopeInit)
 }
 func (sf *DefaultScopeFactory) CreateScopeFrom(scopeInst Scopable, scopeType types.DataType) ScopeEx {
 	context := scopeInst.Context()
@@ -111,19 +111,19 @@ func (sf *DefaultScopeFactory) CreateScopeFrom(scopeInst Scopable, scopeType typ
 		scope.Initialize(Type, scopeInst)
 	}
 
-	return sf.createScope(context, scopeInit)
+	return sf.createScope(context, nil, scopeInit)
 }
 
 type DefaultScope struct {
-	context      Context
-	scopeCtxt    ScopeContextEx
+	context   Context
+	scopeCtxt ScopeContextEx
 }
 
 func NewScope(context Context) *DefaultScope {
 	scopeCtxt := context.(ContextEx).GetScopeContext()
 	return &DefaultScope{
-		context:      context,
-		scopeCtxt:    scopeCtxt,
+		context:   context,
+		scopeCtxt: scopeCtxt,
 	}
 }
 func (ds *DefaultScope) Initialize(scopeType types.DataType, scopeInst Scopable) {

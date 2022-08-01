@@ -9,7 +9,7 @@ import (
 type ConfigureComponentsMethod func(context BuilderContext, components dep.ComponentCollectionEx)
 
 type Activator interface {
-	GetProvider() dep.ComponentProvider
+	GetProvider() dep.ComponentProviderEx
 }
 
 func GetComponent[T any](avt Activator) T {
@@ -17,9 +17,9 @@ func GetComponent[T any](avt Activator) T {
 }
 
 func CreateActivator(configureComponents ConfigureComponentsMethod) Activator {
-	return buildActivator(true, "", configureComponents, nil, nil)
+	return buildActivator(true, "", nil, configureComponents, nil, nil)
 }
-func CreateActivatorEx(debug bool, name string, configureComponents ConfigureComponentsMethod, loggerFactory logger.LoggerFactory) Activator {
+func CreateActivatorEx(debug bool, name string, globalProps dep.Properties, configureComponents ConfigureComponentsMethod, loggerFactory logger.LoggerFactory) Activator {
 	var configLoggerFactory ConfigureLoggerFactoryMethod
 	if loggerFactory != nil {
 		configLoggerFactory = func(context BuilderContext, factoryBuilder LoggerFactoryBuilder) {
@@ -33,9 +33,9 @@ func CreateActivatorEx(debug bool, name string, configureComponents ConfigureCom
 		options.TrackTransientRecurrence = false
 		options.EnableDiagnostics = debug
 	}
-	return buildActivator(debug, name, configureComponents, configLoggerFactory, configCompProvider)
+	return buildActivator(debug, name, globalProps, configureComponents, configLoggerFactory, configCompProvider)
 }
-func buildActivator(debug bool, name string, configureComponents ConfigureComponentsMethod, configLoggerFactory ConfigureLoggerFactoryMethod, configCompProvider ConfigureComponentProviderMethod) Activator {
+func buildActivator(debug bool, name string, globalProps dep.Properties, configureComponents ConfigureComponentsMethod, configLoggerFactory ConfigureLoggerFactoryMethod, configCompProvider ConfigureComponentProviderMethod) Activator {
 	hostName := types.Of(new(Activator)).Name()
 	if name != "" {
 		hostName = name
@@ -44,7 +44,7 @@ func buildActivator(debug bool, name string, configureComponents ConfigureCompon
 	if debug {
 		runningMode = Debug
 	}
-	builder := newActivatorBuilder(hostName, runningMode)
+	builder := newActivatorBuilder(hostName, runningMode, globalProps)
 
 	builder.ConfigureLogging(configLoggerFactory)
 	builder.ConfigureComponentProvider(configCompProvider)
@@ -88,7 +88,7 @@ func (da *DefaultActivator) getRegisteredCount() int {
 }
 
 // public APIs
-func (da *DefaultActivator) GetProvider() dep.ComponentProvider {
+func (da *DefaultActivator) GetProvider() dep.ComponentProviderEx {
 	return da.hostContext
 }
 

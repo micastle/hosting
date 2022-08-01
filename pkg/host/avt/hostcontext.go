@@ -20,10 +20,10 @@ type DefaultHostContext struct {
 	localDeps dep.DepDict[dep.ComponentGetter]
 }
 
-func NewHostContext(builderContext *HostBuilderContext) *DefaultHostContext {
+func NewHostContext(builderContext *HostBuilderContext, props dep.Properties) *DefaultHostContext {
 	debug := builderContext.RunningMode == Debug
 	return &DefaultHostContext{
-		scopeCtxt:      dep.NewGlobalScopeContext(debug),
+		scopeCtxt:      dep.NewGlobalScopeContext(debug, props),
 		depTracker:     dep.NewDependencyTracker(nil),
 		builderContext: builderContext,
 	}
@@ -85,7 +85,7 @@ func (hc *DefaultHostContext) GetTracker() dep.DependencyTracker {
 func (cc *DefaultHostContext) UpdateProperties(props dep.Properties) {
 }
 func (cc *DefaultHostContext) GetProperties() dep.Properties {
-	return nil
+	return cc.scopeCtxt.GetScope().CopyProperties()
 }
 
 func (hc *DefaultHostContext) GetLoggerFactory() logger.LoggerFactory {

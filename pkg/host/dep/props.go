@@ -47,6 +47,9 @@ func Props(pairs ...*PropertyPair) *DefaultProperties {
 }
 
 func (p *DefaultProperties) Update(props Properties) {
+	if props == nil {
+		return
+	}
 	for _, key := range props.Keys() {
 		p.Set(key, props.Get(key))
 	}
@@ -72,7 +75,11 @@ func (p *DefaultProperties) Has(key string) bool {
 	return exist
 }
 func (p *DefaultProperties) Get(key string) interface{} {
-	return p.props[key]
+	val, exist := p.props[key]
+	if !exist {
+		panic(fmt.Errorf("property \"%s\" not exist", key))
+	}
+	return val
 }
 func (p *DefaultProperties) Set(key string, val interface{}) {
 	p.props[key] = val

@@ -6,8 +6,8 @@ import (
 
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/dep"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/logger"
-	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/test"
+	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
 func createHostBuilder() HostBuilder {
@@ -269,7 +269,7 @@ func Test_Host_multi_implementations(t *testing.T) {
 	builder.SetHostName(hostName)
 	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
 		dep.RegisterComponent[Downloader](
-			components, 
+			components,
 			func(props dep.Properties) interface{} { return props.Get("type") },
 			func(comp dep.CompImplCollection) {
 				comp.AddImpl("url", NewUrlDownloader)
@@ -305,8 +305,8 @@ func Test_Host_multi_implementations_evaluator_negative(t *testing.T) {
 	builder.SetHostName(hostName)
 	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
 		dep.RegisterComponent[Downloader](
-			components, 
-			func(props dep.Properties) interface{} { return props.Get("type_not_exist") },
+			components,
+			func(props dep.Properties) interface{} { return nil },
 			func(comp dep.CompImplCollection) {
 				comp.AddImpl("url", NewUrlDownloader)
 				comp.AddImpl("blob", NewBlobDownloader)
@@ -339,7 +339,7 @@ func Test_Host_multi_impl_singleton(t *testing.T) {
 	builder.SetHostName(hostName)
 	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
 		dep.RegisterComponent[Downloader](
-			components, 
+			components,
 			func(props dep.Properties) interface{} { return props.Get("type") },
 			func(comp dep.CompImplCollection) {
 				compType := comp.GetComponentType()

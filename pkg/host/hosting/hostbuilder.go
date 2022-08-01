@@ -62,6 +62,7 @@ func UseService[T any](builder HostBuilder, createService FreeStyleServiceFactor
 type DefaultHostBuilder struct {
 	Logger                  logger.Logger
 	HostName                string
+	GlobalProps             dep.Properties
 	ConfigComponentProvider ConfigureComponentProviderMethod
 	ConfigHostConfiguration ConfigureHostMethod
 	HostConfigLoader        LoadHostConfigurationMethod
@@ -402,7 +403,7 @@ func (hb *DefaultHostBuilder) Build() Host {
 	}
 	builderContext.Application.Configuration = NewDefaultConfiguration(nil)
 	hb.buildHostConfiguration(builderContext)
-	hostContext := NewHostContext(builderContext)
+	hostContext := NewHostContext(builderContext, hb.GlobalProps)
 
 	//
 	// Stage 1: prepare host level components: component manager and logger factory

@@ -14,15 +14,21 @@ type DefaultScopeData struct {
 	concurrency bool
 	mutex       sync.Mutex
 	records     map[interface{}]ScopedCompRecord
+
+	properties Properties
 }
 
-func NewScopeData(concurrency bool) *DefaultScopeData {
+func NewScopeData(concurrency bool, props Properties) *DefaultScopeData {
 	return &DefaultScopeData{
 		concurrency: concurrency,
 		records:     make(map[interface{}]ScopedCompRecord),
+		properties:  props,
 	}
 }
 
+func (sd *DefaultScopeData) EnableConcurrency(concurrency bool) {
+	sd.concurrency = concurrency
+}
 func (sd *DefaultScopeData) Initialize(scopeType types.DataType, scopeInst Scopable) {
 	sd.scopeType = scopeType
 	sd.scopeInst = scopeInst
@@ -81,6 +87,10 @@ func (sd *DefaultScopeData) getRecord(compType types.DataType) ScopedCompRecord 
 }
 func (sd *DefaultScopeData) GetCompRecord(compType types.DataType) ScopedCompRecord {
 	return sd.getRecord(compType)
+}
+
+func (sd *DefaultScopeData) CopyProperties() Properties {
+	return NewPropertiesFrom(sd.properties)
 }
 
 // methods for ScopedCompRecord

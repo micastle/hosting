@@ -100,7 +100,7 @@ func (cm *DefaultComponentManager) Initialize() {
 	})
 	AddComponent[Scope](cm, func(depCtxt Context, interfaceType types.DataType, props Properties) interface{} {
 		parentScope := depCtxt.(ContextEx).GetScopeContext()
-		scopeCtxt := NewScopeContext(parentScope)
+		scopeCtxt := NewScopeContext(parentScope, props)
 		compCtxt := NewComponentContext(scopeCtxt, cm, types.Of(new(Scope)))
 		TrackDependent(compCtxt, depCtxt.(ContextEx))
 		return ScopeEx(NewScope(compCtxt))

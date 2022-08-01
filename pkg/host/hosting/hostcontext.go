@@ -24,11 +24,11 @@ type DefaultHostContext struct {
 	Services            map[string]Service
 }
 
-func NewHostContext(builderContext *HostBuilderContext) *DefaultHostContext {
+func NewHostContext(builderContext *HostBuilderContext, props dep.Properties) *DefaultHostContext {
 	debug := builderContext.RunningMode == Debug
 	return &DefaultHostContext{
 		RawContext:     context.Background(),
-		scopeCtxt:      dep.NewGlobalScopeContext(debug),
+		scopeCtxt:      dep.NewGlobalScopeContext(debug, props),
 		depTracker:     dep.NewDependencyTracker(nil),
 		builderContext: builderContext,
 		Services:       make(map[string]Service),

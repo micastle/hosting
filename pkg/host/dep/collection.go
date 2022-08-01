@@ -2,6 +2,7 @@ package dep
 
 import (
 	"fmt"
+
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
@@ -53,7 +54,6 @@ type ComponentCollectionEx interface {
 
 	// register multi-impl component
 	RegisterComponent(interfaceType types.DataType, propEval Evaluator, configure ConfigureComponentType)
-
 }
 
 func RegisterComponent[T any](collection ComponentCollectionEx, propEval Evaluator, configure ConfigureComponentType) {
@@ -95,12 +95,16 @@ func (cc *DefaultComponentCollection) RegisterComponent(interfaceType types.Data
 	implHub := GetComponent[ComponentHub](cc.context)
 	implHub.SetComponentType(interfaceType)
 	configure(implHub)
-	cc.cm.AddComponent(func(context Context, interfaceType types.DataType, props Properties) interface{} {
-		key := propsEval(props)
+	cc.cm.AddComponent(func(dependent Context, interfaceType types.DataType, props Properties) interface{} {
+		context := dependent.(ContextEx)
+		// build properties to evaluate, context of to be created component will do it again, dup?
+		inheritProps := context.GetScopeContext().GetScope().CopyProperties()
+		inheritProps.Update(props)
+		key := propsEval(inheritProps)
 		if key == nil {
 			panic(fmt.Errorf("evaluated component implementation key should never be nil"))
 		}
-		context.GetLogger().Debugf("Get component implementation for type: %s %s", interfaceType.FullName(), props.String())
+		context.GetLogger().Debugf("Get component implementation for type: %s %s", interfaceType.FullName(), inheritProps.String())
 		factoryMethod := implHub.GetImplementation(key)
 		return factoryMethod(context, interfaceType, props)
 	}, interfaceType)

@@ -13,7 +13,7 @@ func Test_Host_context(t *testing.T) {
 	hostName := "Test"
 	runningMode := Debug
 
-	builder := newActivatorBuilder(hostName, runningMode)
+	builder := newActivatorBuilder(hostName, runningMode, nil)
 
 	activator := builder.build()
 
@@ -71,9 +71,15 @@ func Test_Host_context(t *testing.T) {
 	props = dep.Props(dep.Pair("key2", 3), dep.Pair("key3", 4))
 	hostCtxt.UpdateProperties(props)
 	result := hostCtxt.GetProperties()
-	if result != nil {
-		t.Errorf("host properties is not supported, must be nil: %p", result)
+	if result == nil {
+		t.Error("unexpected nil properties")
+	} else {
+		count := len(result.Keys())
+		if count > 0 {
+			t.Errorf("unexpected property count: %d", count)
+		}
 	}
+
 	// val := result.Get("key2").(int)
 	// if val != 3 {
 	// 	t.Errorf("property value is not expected: %d", val)
