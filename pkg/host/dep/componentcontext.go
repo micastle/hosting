@@ -28,7 +28,7 @@ func NewComponentContext(scopeCtxt ScopeContextEx, contextualProvider Contextual
 		depTracker:         NewDependencyTracker(scopeCtxt),
 		contextualProvider: contextualProvider,
 		componentType:      componentType,
-		props:              NewProperties(),
+		props:              scopeCtxt.GetScope().CopyProperties(),
 	}
 	compCtxt.localDeps = NewDependencyDictionary[ComponentGetter]()
 	return compCtxt
@@ -46,7 +46,7 @@ func (cc *DefaultComponentContext) UpdateProperties(props Properties) {
 	cc.props.Update(props)
 }
 func (cc *DefaultComponentContext) GetProperties() Properties {
-	return cc.props
+	return NewPropertiesFrom(cc.props)
 }
 
 func (cc *DefaultComponentContext) GetScopeContext() ScopeContextEx {

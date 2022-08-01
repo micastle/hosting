@@ -12,7 +12,7 @@ func TestComponent_multi_implementations(t *testing.T) {
 	components, provider := createCollection(ctxt, cm)
 
 	RegisterComponent[Downloader](
-		components, 
+		components,
 		func(props Properties) interface{} { return props.Get("type") },
 		func(comp CompImplCollection) {
 			comp.AddImpl("url", NewUrlDownloader)
@@ -35,8 +35,8 @@ func TestComponent_multi_implementations_evaluator_negative(t *testing.T) {
 	components, provider := createCollection(ctxt, cm)
 
 	RegisterComponent[Downloader](
-		components, 
-		func(props Properties) interface{} { return props.Get("type_not_exist") },
+		components,
+		func(props Properties) interface{} { return nil },
 		func(comp CompImplCollection) {
 			comp.AddImpl("url", NewUrlDownloader)
 			comp.AddImpl("blob", NewBlobDownloader)
@@ -56,7 +56,7 @@ func TestComponent_multi_implementations_key_not_exist(t *testing.T) {
 	components, provider := createCollection(ctxt, cm)
 
 	RegisterComponent[Downloader](
-		components, 
+		components,
 		func(props Properties) interface{} { return props.Get("type") },
 		func(comp CompImplCollection) {
 			comp.AddImpl("url", NewUrlDownloader)
@@ -75,7 +75,7 @@ func TestComponent_multi_impl_singleton(t *testing.T) {
 	components, provider := createCollection(ctxt, cm)
 
 	RegisterComponent[Downloader](
-		components, 
+		components,
 		func(props Properties) interface{} { return props.Get("type") },
 		func(comp CompImplCollection) {
 			compType := comp.GetComponentType()

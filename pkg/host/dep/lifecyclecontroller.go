@@ -50,13 +50,15 @@ func (lc *DefaultLifecycleController) buildDepInjector(compProvider ComponentPro
 	injector.Initialize(compProvider, contextualDeps)
 	return injector
 }
-func (lc *DefaultLifecycleController) getComponentFactoryMethod(factoryMethod FreeStyleFactoryMethod, createCtxt ContextFactoryMethod) InternalFactoryMethod {
+func (lc *DefaultLifecycleController) getComponentFactoryMethod(factoryMethod FreeStyleFactoryMethod, createCtxt ContextFactoryMethod, transient bool) InternalFactoryMethod {
 	options := lc.options
 	return func(dependent ContextEx, scopeCtxt ScopeContextEx, compType types.DataType, props Properties) (interface{}, ContextEx) {
 		compCtxt := createCtxt(scopeCtxt)
 		TrackDependent(compCtxt, dependent)
-		if options.PropertiesPassOver {
-			compCtxt.UpdateProperties(dependent.GetProperties())
+		if transient {
+			if options.PropertiesPassOver {
+				compCtxt.UpdateProperties(dependent.GetProperties())
+			}
 		}
 		if props != nil {
 			compCtxt.UpdateProperties(props)
@@ -81,7 +83,7 @@ func (lc *DefaultLifecycleController) getTransientFactoryMethod(compType types.D
 	}
 }
 func (lc *DefaultLifecycleController) BuildTransientFactoryMethod(compType types.DataType, createInstance FreeStyleFactoryMethod, createCtxt ContextFactoryMethod) FactoryMethod {
-	createComponent := lc.getComponentFactoryMethod(createInstance, createCtxt)
+	createComponent := lc.getComponentFactoryMethod(createInstance, createCtxt, true)
 	createTransient := lc.getTransientFactoryMethod(compType, createComponent)
 	return func(depCtxt Context, interfaceType types.DataType, props Properties) interface{} {
 		dependent := depCtxt.(ContextEx)
@@ -122,7 +124,7 @@ func (lc *DefaultLifecycleController) getSingletonFactoryMethod(compTypes []type
 	}
 }
 func (lc *DefaultLifecycleController) BuildSingletonFactoryMethod(compTypes []types.DataType, createInstance FreeStyleFactoryMethod, createCtxt ContextFactoryMethod) FactoryMethod {
-	createComponent := lc.getComponentFactoryMethod(createInstance, createCtxt)
+	createComponent := lc.getComponentFactoryMethod(createInstance, createCtxt, false)
 	createSingleton := lc.getSingletonFactoryMethod(compTypes, createComponent)
 
 	return func(depCtxt Context, interfaceType types.DataType, props Properties) interface{} {
@@ -151,7 +153,8 @@ func (lc *DefaultLifecycleController) getScopedFactoryMethod(compType types.Data
 	}
 }
 func (lc *DefaultLifecycleController) BuildScopedFactoryMethod(compType types.DataType, scopeType types.DataType, createInstance FreeStyleFactoryMethod, createCtxt ContextFactoryMethod) FactoryMethod {
-	createScoped := lc.getScopedFactoryMethod(compType, lc.getComponentFactoryMethod(createInstance, createCtxt))
+	createComponent := lc.getComponentFactoryMethod(createInstance, createCtxt, false)
+	createScoped := lc.getScopedFactoryMethod(compType, createComponent)
 
 	return func(depCtxt Context, interfaceType types.DataType, props Properties) interface{} {
 		dependent := depCtxt.(ContextEx)

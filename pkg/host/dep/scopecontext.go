@@ -12,33 +12,37 @@ type DefaultScopeContext struct {
 	data        ScopeDataEx
 }
 
-func NewScopeContext(parent ScopeContextEx) *DefaultScopeContext {
+func NewScopeContext(parent ScopeContextEx, props Properties) *DefaultScopeContext {
+	inheritProps := parent.GetScope().CopyProperties()
+	inheritProps.Update(props)
 	return &DefaultScopeContext{
 		debug:       parent.IsDebug(),
 		concurrency: parent.IsConcurrencyEnabled(),
 		parent:      parent,
 		depDict:     NewDependencyDictionary[ComponentGetter](),
-		data:        nil,
+		data:        NewScopeData(parent.IsConcurrencyEnabled(), inheritProps),
 	}
 }
 
-func NewGlobalScopeContext(debug bool) *DefaultScopeContext {
+func NewGlobalScopeContext(debug bool, props Properties) *DefaultScopeContext {
+	copyProps := NewPropertiesFrom(props)
 	return &DefaultScopeContext{
 		debug:       debug,
 		concurrency: false, // default value, overwrite by EnableConcurrency immediately
 		parent:      nil,
 		depDict:     NewDependencyDictionary[ComponentGetter](),
-		data:        nil,
+		data:        NewScopeData(false, copyProps),
 	}
 }
 
+// EnableConcurrency is only called on Global context which does not have a parent to inherit necessary data
 func (sc *DefaultScopeContext) EnableConcurrency(concurrency bool) {
 	sc.concurrency = concurrency
+	sc.data.EnableConcurrency(concurrency)
 }
+
 func (sc *DefaultScopeContext) Initialize(scopeType types.DataType, scopeInst Scopable) {
-	data := NewScopeData(sc.concurrency)
-	data.Initialize(scopeType, scopeInst)
-	sc.data = data
+	sc.data.Initialize(scopeType, scopeInst)
 
 	// if scopeType.Key() != ScopeType_Global.Key() {
 	sc.AddDependency(scopeType, CompGetter(scopeInst))

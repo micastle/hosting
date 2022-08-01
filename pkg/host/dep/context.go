@@ -128,6 +128,7 @@ type ScopeData interface {
 type ScopeDataEx interface {
 	ScopeData
 
+	EnableConcurrency(concurrency bool)
 	Initialize(scopeType types.DataType, scopeInst Scopable)
 
 	IsTypedScope() bool
@@ -137,6 +138,8 @@ type ScopeDataEx interface {
 
 	// retrieve if entry exist, or insert new entry and return if not
 	GetCompRecord(compType types.DataType) ScopedCompRecord
+
+	CopyProperties() Properties
 }
 
 // Utility APIs for default logger name

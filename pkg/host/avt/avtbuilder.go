@@ -16,14 +16,16 @@ type DefaultActivatorBuilder struct {
 	runningMode RunningMode
 	Logger      logger.Logger
 
+	GlobalProps             dep.Properties
 	ConfigLogging           ConfigureLoggerFactoryMethod
 	ConfigComponentProvider ConfigureComponentProviderMethod
 }
 
-func newActivatorBuilder(hostName string, runningMode RunningMode) *DefaultActivatorBuilder {
+func newActivatorBuilder(hostName string, runningMode RunningMode, globalProps dep.Properties) *DefaultActivatorBuilder {
 	return &DefaultActivatorBuilder{
 		HostName:    hostName,
 		runningMode: runningMode,
+		GlobalProps: globalProps,
 	}
 }
 
@@ -41,7 +43,7 @@ func (ab *DefaultActivatorBuilder) build() *DefaultActivator {
 		HostName:    ab.HostName,
 		RunningMode: ab.runningMode,
 	}
-	hostContext := NewHostContext(builderContext)
+	hostContext := NewHostContext(builderContext, ab.GlobalProps)
 
 	//
 	// Stage 1: prepare host level components: component manager and logger factory

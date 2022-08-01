@@ -15,24 +15,24 @@ import (
 )
 
 // create global scope context for top component: host
-func createTopScopeContext(context Context, debug bool, concurrency bool) *DefaultScopeContext {
-	scopeCtxt := NewGlobalScopeContext(debug)
+func createTopScopeContext(context Context, debug bool, concurrency bool, props Properties) *DefaultScopeContext {
+	scopeCtxt := NewGlobalScopeContext(debug, props)
 	scopeCtxt.EnableConcurrency(concurrency)
 	scopeCtxt.Initialize(ScopeType_Global, nil)
 	return scopeCtxt
 }
-func createNewTestScopeFrom(ctxt Context, scopeCtxt ScopeContextEx, scopeTypes ...types.DataType) ScopeContextEx {
+func createNewTestScopeFrom(ctxt Context, scopeCtxt ScopeContextEx, props Properties, scopeTypes ...types.DataType) ScopeContextEx {
 	parent := scopeCtxt
 	for _, t := range scopeTypes {
-		newScopeCtxt := NewScopeContext(parent)
+		newScopeCtxt := NewScopeContext(parent, props)
 		newScopeCtxt.Initialize(t, nil)
 		parent = newScopeCtxt
 	}
 	return parent
 }
-func createNewTestScope(hostCtxt HostContextEx, concurrency bool, scopeTypes ...types.DataType) ScopeContextEx {
-	globalScope := createTopScopeContext(hostCtxt, hostCtxt.IsDebug(), concurrency)
-	return createNewTestScopeFrom(hostCtxt, globalScope, scopeTypes...)
+func createNewTestScope(hostCtxt HostContextEx, concurrency bool, props Properties, scopeTypes ...types.DataType) ScopeContextEx {
+	globalScope := createTopScopeContext(hostCtxt, hostCtxt.IsDebug(), concurrency, props)
+	return createNewTestScopeFrom(hostCtxt, globalScope, nil, scopeTypes...)
 }
 func initComponentManager(hostCtxt HostContext, options *ComponentProviderOptions) ComponentManager {
 	cm := NewDefaultComponentManager(hostCtxt.(HostContextEx), options)
@@ -46,13 +46,13 @@ func initComponentManager(hostCtxt HostContext, options *ComponentProviderOption
 
 func prepareComponentManagerWithScope(options *ComponentProviderOptions, scopeTypes ...types.DataType) (ComponentManager, ContextEx) {
 	hostCtxt := NewMockContext(ContextType_Host, "Test", true, nil)
-	globalScope := createTopScopeContext(hostCtxt, true, options.EnableSingletonConcurrency)
+	globalScope := createTopScopeContext(hostCtxt, true, options.EnableSingletonConcurrency, nil)
 	hostCtxt.SetScopeContext(globalScope)
 
 	cm := initComponentManager(hostCtxt, options)
 
 	ctxt := NewMockContext(ContextType_Component, "Starter", true, nil)
-	scopeCtxt := createNewTestScopeFrom(ctxt, globalScope, scopeTypes...)
+	scopeCtxt := createNewTestScopeFrom(ctxt, globalScope, nil, scopeTypes...)
 	ctxt.SetScopeContext(scopeCtxt)
 	ctxt.SetComponentManager(cm)
 	lf := ctxt.GetLoggerFactory()
@@ -61,11 +61,14 @@ func prepareComponentManagerWithScope(options *ComponentProviderOptions, scopeTy
 	return cm, ctxt
 }
 func prepareComponentManagerWithOptions(options *ComponentProviderOptions) (ComponentManager, ContextEx) {
-	return prepareComponentManagerWithOptionsEx(options, true)
+	return prepareComponentManagerWithOptionsEx(options, true, nil)
 }
-func prepareComponentManagerWithOptionsEx(options *ComponentProviderOptions, debug bool) (ComponentManager, ContextEx) {
+func prepareComponentManagerWithProperties(options *ComponentProviderOptions, debug bool, props Properties) (ComponentManager, ContextEx) {
+	return prepareComponentManagerWithOptionsEx(options, debug, props)
+}
+func prepareComponentManagerWithOptionsEx(options *ComponentProviderOptions, debug bool, props Properties) (ComponentManager, ContextEx) {
 	ctxt := NewMockContext(ContextType_Host, "Test", debug, nil)
-	scope := createNewTestScope(ctxt, options.EnableSingletonConcurrency)
+	scope := createNewTestScope(ctxt, options.EnableSingletonConcurrency, props)
 	ctxt.SetScopeContext(scope)
 	cm := initComponentManager(ctxt, options)
 	lf := ctxt.GetLoggerFactory()
@@ -80,8 +83,11 @@ func prepareComponentManager(allowFactoryReturnAny bool) (ComponentManager, Cont
 	return prepareComponentManagerWithOptions(options)
 }
 func createNewContext(ctxt ContextEx, scopeType types.DataType) ContextEx {
-	scope := ctxt.GetScopeContext()
-	scope = createNewTestScopeFrom(ctxt, scope, scopeType)
+	return createNewContextWithProps(ctxt, scopeType, nil)
+}
+func createNewContextWithProps(ctxt ContextEx, scopeType types.DataType, props Properties) ContextEx {
+	parent := ctxt.GetScopeContext()
+	scope := createNewTestScopeFrom(ctxt, parent, props, scopeType)
 	newCtxt := NewMockContext(ContextType_Component, scopeType.Name(), ctxt.IsDebug(), scope)
 	TrackDependent(newCtxt, ctxt)
 	return newCtxt
@@ -303,7 +309,7 @@ func TestComponentManager_Diagnostics(t *testing.T) {
 func TestComponentManager_Diagnostics_release(t *testing.T) {
 	options := NewComponentProviderOptions(InterfaceType, StructType)
 	options.EnableDiagnostics = true
-	cm, ctxt := prepareComponentManagerWithOptionsEx(options, false)
+	cm, ctxt := prepareComponentManagerWithOptionsEx(options, false, nil)
 	ops := cm.GetOptions()
 	if ops.EnableDiagnostics != true {
 		t.Error("diagnostics is not enabled")
@@ -690,6 +696,86 @@ func TestComponentManager_Context_getProperties_transient_passover_true(t *testi
 	_ = GetComponentFrom[AnotherInterface](cm, ctxt1, Props(Pair("name", "test")))
 }
 
+func TestComponentManager_Context_getProperties_scoped_passover_true(t *testing.T) {
+	options := NewComponentProviderOptions(InterfaceType, StructType)
+	options.AllowTypeAnyFromFactoryMethod = true
+	options.PropertiesPassOver = true
+	cm, ctxt := prepareComponentManagerWithProperties(options, true, Props(Pair("global", "yes")))
+
+	RegisterScoped[FirstInterface, TestScope](cm, func(ctxt Context, log logger.Logger) interface{} {
+		props := GetComponent[Properties](ctxt)
+		log.Infof("get a props from context: %p", props)
+		if props.Has("name") {
+			t.Error("not expected, prop name should not be passed over for singleton even if PropertiesPassOver=true")
+		}
+		if !props.Has("scope") {
+			t.Error("not expected, scope props should be inherited for scoped comp")
+		}
+		if !props.Has("global") {
+			t.Error("not expected, global props should be inherited for scoped comp")
+		}
+		return NewActualStruct()
+	})
+	RegisterTransient[AnotherInterface](cm, func(ctxt Context, log logger.Logger, first FirstInterface) interface{} {
+		props := GetComponent[Properties](ctxt)
+		log.Infof("get a props from context: %p", props)
+		name := props.Get("name").(string)
+		if name != "test" {
+			t.Errorf("not expected prop name: %s", name)
+		}
+		if !props.Has("scope") {
+			t.Error("not expected, scope props should be inherited for transient comp")
+		}
+		if !props.Has("global") {
+			t.Error("not expected, global props should be inherited for transient comp")
+		}
+		return NewAnotherStruct(ctxt)
+	})
+
+	ctxt1 := createNewContextWithProps(ctxt, ScopeTest, Props(Pair("scope", "yes")))
+	_ = GetComponentFrom[AnotherInterface](cm, ctxt1, Props(Pair("name", "test")))
+}
+
+func TestComponentManager_Context_getProperties_singleton_passover_true(t *testing.T) {
+	options := NewComponentProviderOptions(InterfaceType, StructType)
+	options.AllowTypeAnyFromFactoryMethod = true
+	options.PropertiesPassOver = true
+	cm, ctxt := prepareComponentManagerWithProperties(options, true, Props(Pair("global", "yes")))
+
+	RegisterSingleton[FirstInterface](cm, func(ctxt Context, log logger.Logger) interface{} {
+		props := GetComponent[Properties](ctxt)
+		log.Infof("get a props from context: %p", props)
+		if props.Has("name") {
+			t.Error("not expected, prop name should not be passed over for singleton even if PropertiesPassOver=true")
+		}
+		if props.Has("singleton") {
+			t.Error("not expected, scope props should not be inherited for singleton comp")
+		}
+		if !props.Has("global") {
+			t.Error("not expected, global props should be inherited for singleton comp")
+		}
+		return NewActualStruct()
+	})
+	RegisterTransient[AnotherInterface](cm, func(ctxt Context, log logger.Logger, first FirstInterface) interface{} {
+		props := GetComponent[Properties](ctxt)
+		log.Infof("get a props from context: %p", props)
+		name := props.Get("name").(string)
+		if name != "test" {
+			t.Errorf("not expected prop name: %s", name)
+		}
+		if !props.Has("scope") {
+			t.Error("not expected, scope props should be inherited for transient comp")
+		}
+		if !props.Has("global") {
+			t.Error("not expected, global props should be inherited for transient comp")
+		}
+		return NewAnotherStruct(ctxt)
+	})
+
+	ctxt1 := createNewContextWithProps(ctxt, ScopeTest, Props(Pair("scope", "yes")))
+	_ = GetComponentFrom[AnotherInterface](cm, ctxt1, Props(Pair("name", "test")))
+}
+
 func TestComponentManager_Scoped_SameInsance(t *testing.T) {
 	options := NewComponentProviderOptions(InterfaceType, StructType)
 	options.AllowTypeAnyFromFactoryMethod = true
@@ -880,7 +966,7 @@ func TestComponentManager_Scoped_NonTypedScope(t *testing.T) {
 		executed++
 	}
 
-	scope := scopeFactory.CreateScope(ctxt)
+	scope := scopeFactory.CreateScope(ctxt, nil)
 	defer func() { scope.Dispose() }()
 
 	scopeCtxt := scope.GetScopeContext()
@@ -906,6 +992,33 @@ func TestComponentManager_Scoped_NonTypedScope(t *testing.T) {
 
 	if executed != 1 {
 		t.Errorf("runtest is not executed as expected once: %d", executed)
+	}
+}
+
+func TestComponentManager_Scoped_NonTypedScope_props(t *testing.T) {
+	options := NewComponentProviderOptions(InterfaceType, StructType)
+	options.AllowTypeAnyFromFactoryMethod = true
+	cm, ctxt := prepareComponentManagerWithProperties(options, true, Props(Pair("type", "blob"), Pair("global", "true")))
+
+	scopeFactory := GetComponentFrom[ScopeFactory](cm, ctxt, nil)
+
+	scope := scopeFactory.CreateScope(ctxt, Props(Pair("type", "url"), Pair("scope", "true")))
+	defer func() { scope.Dispose() }()
+
+	props := scope.GetScopeContext().(ScopeContextEx).GetScope().CopyProperties()
+	if !props.Has("global") {
+		t.Error("global prop not inherited")
+	}
+	if !props.Has("scope") {
+		t.Error("scope prop not inherited")
+	}
+	if !props.Has("type") {
+		t.Error("global and scope prop are not inherited")
+	} else {
+		val := props.Get("type")
+		if val != "url" {
+			t.Errorf("scope prop not overwrite the global prop? actual: %s", val)
+		}
 	}
 }
 

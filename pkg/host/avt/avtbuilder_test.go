@@ -15,7 +15,7 @@ func Test_HostBuilder_ConfigureLogging_not_exist(t *testing.T) {
 	hostName := "Test"
 	runningMode := Debug
 
-	builder := newActivatorBuilder(hostName, runningMode)
+	builder := newActivatorBuilder(hostName, runningMode, nil)
 	builder.ConfigureLogging(func(context BuilderContext, factoryBuilder LoggerFactoryBuilder) {
 		hostname := context.GetHostName()
 		debug := context.IsDebug()

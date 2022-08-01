@@ -53,6 +53,7 @@ func newDefaultServiceContext(contextType string, scopeCtxt dep.ScopeContextEx, 
 		contextType:        contextType,
 		name:               serviceType.FullName(),
 		serviceType:        serviceType,
+		props:              scopeCtxt.GetScope().CopyProperties(),
 	}
 	sc.localDeps = dep.NewDependencyDictionary[dep.ComponentGetter]()
 
@@ -81,7 +82,7 @@ func (sc *DefaultServiceContext) UpdateProperties(props dep.Properties) {
 	}
 }
 func (sc *DefaultServiceContext) GetProperties() dep.Properties {
-	return sc.props
+	return dep.NewPropertiesFrom(sc.props)
 }
 
 func (sc *DefaultServiceContext) GetLoggerFactory() logger.LoggerFactory {

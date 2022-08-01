@@ -2,6 +2,7 @@ package dep
 
 import (
 	"fmt"
+
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
