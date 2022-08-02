@@ -6,70 +6,60 @@ import (
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
-type ComponentImpl struct {
-	Key            interface{}
-	Singleton      bool
-	CreateInstance FreeStyleFactoryMethod
-}
-
-type ComponentImplProvider interface {
+type ComponentImplProvider[K comparable] interface {
 	GetComponentType() types.DataType
-	GetImplementation(key interface{}) FactoryMethod
+	GetImplementation(key K) FactoryMethod
 }
 
-type CompImplCollection interface {
+type CompImplCollection[K comparable] interface {
 	GetComponentType() types.DataType
-	AddImpl(key interface{}, createInstance FreeStyleFactoryMethod)
+	AddImpl(key K, createInstance FreeStyleFactoryMethod)
 
-	AddSingletonImpl(key interface{}, createInstance FreeStyleFactoryMethod)
-	AddTransientImpl(key interface{}, createInstance FreeStyleFactoryMethod)
+	AddSingletonImpl(key K, createInstance FreeStyleFactoryMethod)
+	AddTransientImpl(key K, createInstance FreeStyleFactoryMethod)
 }
 
-type ComponentHub interface {
-	SetComponentType(types.DataType)
-
-	ComponentImplProvider
-	CompImplCollection
+type ComponentHub[K comparable] interface {
+	ComponentImplProvider[K]
+	CompImplCollection[K]
 }
 
-type DefaultComponentImplHub struct {
+type DefaultComponentImplHub[K comparable] struct {
 	context             Context
 	provider            ContextualProvider
 	lifecycleController LifecycleController
 	interfaceType       types.DataType
-	impls               map[interface{}]FactoryMethod
+	impls               map[K]FactoryMethod
 }
 
-func NewComponentImplHub(context Context, provider ContextualProvider) *DefaultComponentImplHub {
-	return &DefaultComponentImplHub{
+func NewComponentImplHub[K comparable](context Context, provider ContextualProvider, interfaceType types.DataType) *DefaultComponentImplHub[K] {
+	return &DefaultComponentImplHub[K]{
 		context:             context,
 		provider:            provider,
-		lifecycleController: provider.GetOrCreateWithProperties(types.Get[LifecycleController](), context, nil).(LifecycleController),
-		impls:               make(map[interface{}]FactoryMethod),
+		lifecycleController: GetComponent[LifecycleController](context),
+		interfaceType:       interfaceType,
+		impls:               make(map[K]FactoryMethod),
 	}
 }
 
-func (ih *DefaultComponentImplHub) SetComponentType(interfaceType types.DataType) {
-	ih.interfaceType = interfaceType
-}
-func (ih *DefaultComponentImplHub) GetComponentType() types.DataType {
+func (ih *DefaultComponentImplHub[K]) GetComponentType() types.DataType {
 	return ih.interfaceType
 }
 
-func (ih *DefaultComponentImplHub) AddSingletonImpl(key interface{}, createInstance FreeStyleFactoryMethod) {
+func (ih *DefaultComponentImplHub[K]) AddSingletonImpl(key K, createInstance FreeStyleFactoryMethod) {
 	ctxtFactory := GetComponentContextFactory(ih.provider, ih.interfaceType)
 	factoryMethod := ih.lifecycleController.BuildSingletonFactoryMethod([]types.DataType{ih.interfaceType}, createInstance, ctxtFactory)
 	ih.impls[key] = factoryMethod
 }
-func (ih *DefaultComponentImplHub) AddTransientImpl(key interface{}, createInstance FreeStyleFactoryMethod) {
+func (ih *DefaultComponentImplHub[K]) AddTransientImpl(key K, createInstance FreeStyleFactoryMethod) {
 	ctxtFactory := GetComponentContextFactory(ih.provider, ih.interfaceType)
 	factoryMethod := ih.lifecycleController.BuildTransientFactoryMethod(ih.interfaceType, createInstance, ctxtFactory)
 	ih.impls[key] = factoryMethod
 }
-func (ih *DefaultComponentImplHub) AddImpl(key interface{}, createInstance FreeStyleFactoryMethod) {
+func (ih *DefaultComponentImplHub[K]) AddImpl(key K, createInstance FreeStyleFactoryMethod) {
 	ih.AddTransientImpl(key, createInstance)
 }
-func (ih *DefaultComponentImplHub) GetImplementation(key interface{}) FactoryMethod {
+func (ih *DefaultComponentImplHub[K]) GetImplementation(key K) FactoryMethod {
 	factoryMethod, exist := ih.impls[key]
 	if !exist {
 		panic(fmt.Errorf("component(%s) implementation not exist for key %v", ih.interfaceType.FullName(), key))

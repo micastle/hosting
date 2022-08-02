@@ -109,7 +109,6 @@ func (cm *DefaultComponentManager) Initialize() {
 	cm.context = NewComponentContext(cm.globalScope, cm, types.Of(new(ComponentManager)))
 	cm.lifecycleController = GetComponent[LifecycleController](cm.context)
 
-	RegisterTransient[ComponentHub](cm, NewComponentImplHub)
 	RegisterSingleton[ScopeFactory](cm, NewScopeFactory)
 }
 

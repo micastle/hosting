@@ -46,7 +46,7 @@ func (cc *DefaultComponentContext) UpdateProperties(props Properties) {
 	cc.props.Update(props)
 }
 func (cc *DefaultComponentContext) GetProperties() Properties {
-	return NewPropertiesFrom(cc.props)
+	return cc.props
 }
 
 func (cc *DefaultComponentContext) GetScopeContext() ScopeContextEx {

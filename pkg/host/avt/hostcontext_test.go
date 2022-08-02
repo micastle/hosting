@@ -17,7 +17,7 @@ func Test_Host_context(t *testing.T) {
 
 	activator := builder.build()
 
-	activator.configureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	activator.configureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.AddConfiguration(&TestConfig{})
 		dep.RegisterTransient[AnotherInterface](components, NewAnotherStruct)
 	})

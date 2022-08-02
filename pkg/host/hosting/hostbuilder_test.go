@@ -431,7 +431,7 @@ func Test_HostBuilder_ConfigureAppRunner_already_exist(t *testing.T) {
 
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterSingleton[AppRunner](components, func() AppRunner { return nil })
 	})
 	builder.ConfigureAppRunner(func(hostContext dep.HostContext, components dep.ComponentCollection) {

@@ -6,10 +6,10 @@ import (
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
-type ConfigureComponentsMethod func(context BuilderContext, components dep.ComponentCollectionEx)
+type ConfigureComponentsMethod func(context BuilderContext, components dep.ComponentCollection)
 
 type Activator interface {
-	GetProvider() dep.ComponentProviderEx
+	GetProvider() dep.ComponentProvider
 }
 
 func GetComponent[T any](avt Activator) T {
@@ -88,7 +88,7 @@ func (da *DefaultActivator) getRegisteredCount() int {
 }
 
 // public APIs
-func (da *DefaultActivator) GetProvider() dep.ComponentProviderEx {
+func (da *DefaultActivator) GetProvider() dep.ComponentProvider {
 	return da.hostContext
 }
 

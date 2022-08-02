@@ -390,7 +390,7 @@ func TestComponentManager_BuiltIns(t *testing.T) {
 		t.Error("LifecycleController is not registered as a builtin component")
 	}
 
-	expected := 9
+	expected := 8
 	if num != expected {
 		t.Errorf("registered component type count is not %d: %d", expected, num)
 	}

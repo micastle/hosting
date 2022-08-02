@@ -3,12 +3,12 @@ package dep
 import (
 	"testing"
 
-	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/test"
+	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
-func createCollection(ctxt Context, cm ComponentManager) (ComponentCollectionEx, ComponentProviderEx) {
-	return NewComponentCollection(ctxt, cm), ctxt//NewDefaultProvider(ctxt, cm)
+func createCollection(ctxt Context, cm ComponentManager) (ComponentCollection, ComponentProviderEx) {
+	return NewComponentCollection(ctxt, cm), ctxt //NewDefaultProvider(ctxt, cm)
 }
 
 func TestCollection_basics(t *testing.T) {
@@ -17,7 +17,7 @@ func TestCollection_basics(t *testing.T) {
 	cm, ctxt := prepareComponentManager(true)
 	components, provider := createCollection(ctxt, cm)
 
-	expected := &MyConfig{ value: 123 }
+	expected := &MyConfig{value: 123}
 	AddConfig[MyConfig](components, expected)
 
 	config := GetConfig[MyConfig](provider)
@@ -52,7 +52,7 @@ func TestCollection_basics(t *testing.T) {
 		t.Errorf("component is already registered, result is not expected: %v", registered)
 	}
 
-	expected_count := 13
+	expected_count := 12
 	cnt := components.Count()
 	if cnt != expected_count {
 		t.Errorf("registered component count is not expected: %d", cnt)

@@ -20,7 +20,7 @@ type ConfigureLoggingMethod func(context BuilderContext, loggingBuilder LoggingB
 type ConfigureAppMethod func(context dep.Context, configBuilder ConfigurationBuilder)
 type LoadAppConfigurationMethod func(hostCtxt dep.HostContext) interface{}
 
-type ConfigureComponentsMethod func(context BuilderContext, components dep.ComponentCollectionEx)
+type ConfigureComponentsMethod func(context BuilderContext, components dep.ComponentCollection)
 type ConfigureServicesMethod func(HostBuilder)
 type ConfigureAppRunnerMethod func(hostContext dep.HostContext, components dep.ComponentCollection)
 type ConfigureLifecycleMethod func(ctxt dep.Context, appLifecycle ApplicationLifecycle)
