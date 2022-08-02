@@ -90,7 +90,7 @@ func Test_looper_basic(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[MyProc](components, NewMyProcessor)
 	})
@@ -211,7 +211,7 @@ func Test_looper_func_processor(t *testing.T) {
 	builder.SetHostName(hostName)
 
 	expected := 789
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		RegisterFuncProcessor[MyFuncProc](components, func(resultWriter TestResultWriter) {
 			resultWriter.WriteResult("MyResult", expected)
@@ -255,7 +255,7 @@ func Test_looper_anon_func_processor(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 	})
 
@@ -299,7 +299,7 @@ func Test_looper_conditional_processor_false(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[MyProc](components, NewMyProcessor)
 	})
@@ -337,7 +337,7 @@ func Test_looper_conditional_processor_true(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[MyProc](components, NewMyProcessor)
 	})
@@ -382,7 +382,7 @@ func Test_looper_processor_group_true(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[MyProc](components, NewMyProcessor)
 	})
@@ -429,7 +429,7 @@ func Test_looper_processor_group_exitscope(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[MyProc](components, NewMyProcessor)
 	})
@@ -484,7 +484,7 @@ func Test_looper_processor_group_vars(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 	})
 
 	varError := false
@@ -606,7 +606,7 @@ func Test_looper_scope_context(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[MyProc](components, NewMyProcessor)
 	})
@@ -661,7 +661,7 @@ func Test_looper_global_context(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[MyProc](components, NewMyProcessor)
 	})
@@ -715,7 +715,7 @@ func Test_looper_scope_context_variable_not_exist(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[MyProc](components, NewMyProcessor)
 	})
@@ -782,7 +782,7 @@ func Test_looper_with_scope(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		dep.RegisterTransient[TestScope](components, NewTestScope)
 		dep.RegisterScoped[AnotherInterface, TestScope](components, NewAnotherStruct)

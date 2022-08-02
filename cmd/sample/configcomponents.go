@@ -11,7 +11,7 @@ import (
 
 type MyFuncProc hosting.FunctionProcessor
 
-func ConfigureComponents(context hosting.BuilderContext, components dep.ComponentCollectionEx) {
+func ConfigureComponents(context hosting.BuilderContext, components dep.ComponentCollection) {
 	// configure component configurations (other than host & app configuration)
 	//components.AddConfiguration(&context.GetHostConfiguration().(*Configuration).Log)
 
@@ -32,8 +32,8 @@ func ConfigureComponents(context hosting.BuilderContext, components dep.Componen
 	})
 
 	dep.RegisterComponent[Downloader](components,
-		func(props dep.Properties) interface{} { return props.Get("type") },
-		func(comp dep.CompImplCollection) {
+		func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
+		func(comp dep.CompImplCollection[string]) {
 			comp.AddImpl("url", NewUrlDownloader)
 			comp.AddImpl("blob", NewBlobDownloader)
 		},

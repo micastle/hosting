@@ -82,7 +82,7 @@ func Test_service_basic(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		//components.RegisterSingletonForType(NewMyService, types.Of(new(MyService)))
 	})
@@ -126,7 +126,7 @@ func Test_service_stop_error(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		//components.RegisterSingletonForType(NewMyService, types.Of(new(MyService)))
 	})
@@ -177,7 +177,7 @@ func Test_service_stop_panic(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		//components.RegisterSingletonForType(NewMyService, types.Of(new(MyService)))
 	})
@@ -229,7 +229,7 @@ func Test_service_context(t *testing.T) {
 	builder := NewDefaultHostBuilder()
 	builder.SetHostName(hostName)
 
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewTestResultStore, types.Get[TestResultWriter](), types.Get[TestResultReader]())
 		components.AddConfiguration(&TestConfig{})
 		dep.RegisterTransient[AnotherInterface](components, NewAnotherStruct)

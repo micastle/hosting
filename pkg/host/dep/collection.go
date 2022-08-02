@@ -1,8 +1,6 @@
 package dep
 
 import (
-	"fmt"
-
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
@@ -13,9 +11,6 @@ type FreeStyleFactoryMethod interface{}
 
 // required type: func(...) {}
 type FreeStyleProcessorMethod interface{}
-
-type Evaluator func(props Properties) interface{}
-type ConfigureComponentType func(CompImplCollection)
 
 type ComponentCollection interface {
 	AddConfiguration(configuration interface{})
@@ -49,15 +44,39 @@ func IsComponentRegistered[T any](collection ComponentCollection) bool {
 	return collection.IsComponentRegistered(types.Get[T]())
 }
 
+type Evaluator[K comparable] func(props Properties) K
+type ConfigureImpls[K comparable] func(CompImplCollection[K])
+
+func RegisterComponent[T any, K comparable](components ComponentCollection, propsEval Evaluator[K], configure ConfigureImpls[K]) {
+	compType := types.Get[T]()
+	collection := components.(ComponentCollectionEx)
+	implHub := createComponentHub[K](collection, compType)
+	configure(implHub)
+	collection.AddComponent(func(dependent Context, interfaceType types.DataType, props Properties) any {
+		context := dependent.(ContextEx)
+		// build properties to evaluate, context of to be created component will do it again, dup?
+		inheritProps := context.GetScopeContext().GetScope().CopyProperties()
+		inheritProps.Update(props)
+		key := propsEval(inheritProps)
+		context.GetLogger().Debugf("Get implementation for type %s, key: %v from %s", interfaceType.FullName(), key, inheritProps.String())
+		factoryMethod := implHub.GetImplementation(key)
+		return factoryMethod(context, interfaceType, props)
+	}, compType)
+}
+
 type ComponentCollectionEx interface {
 	ComponentCollection
 
 	// register multi-impl component
-	RegisterComponent(interfaceType types.DataType, propEval Evaluator, configure ConfigureComponentType)
+	CreateComponentHub(func(context Context, provider ContextualProvider) interface{}) interface{}
+	AddComponent(FactoryMethod, types.DataType)
 }
 
-func RegisterComponent[T any](collection ComponentCollectionEx, propEval Evaluator, configure ConfigureComponentType) {
-	collection.RegisterComponent(types.Get[T](), propEval, configure)
+func createComponentHub[K comparable](collection ComponentCollectionEx, compType types.DataType) ComponentHub[K] {
+	implHub := collection.CreateComponentHub(func(context Context, provider ContextualProvider) any {
+		return NewComponentImplHub[K](context, provider, compType)
+	}).(ComponentHub[K])
+	return implHub
 }
 
 type DefaultComponentCollection struct {
@@ -71,7 +90,7 @@ func NewComponentCollection(context Context, cm ComponentManager) *DefaultCompon
 		cm:      cm,
 	}
 }
-func (cc *DefaultComponentCollection) AddConfiguration(configuration interface{}) {
+func (cc *DefaultComponentCollection) AddConfiguration(configuration any) {
 	cc.cm.AddConfiguration(configuration)
 }
 func (cc *DefaultComponentCollection) RegisterSingletonForType(createInstance FreeStyleFactoryMethod, interfaceType types.DataType) {
@@ -91,24 +110,13 @@ func (cc *DefaultComponentCollection) RegisterTransientForType(createInstance Fr
 	cc.cm.RegisterTransientForType(createInstance, interfaceType)
 }
 
-func (cc *DefaultComponentCollection) RegisterComponent(interfaceType types.DataType, propsEval Evaluator, configure ConfigureComponentType) {
-	implHub := GetComponent[ComponentHub](cc.context)
-	implHub.SetComponentType(interfaceType)
-	configure(implHub)
-	cc.cm.AddComponent(func(dependent Context, interfaceType types.DataType, props Properties) interface{} {
-		context := dependent.(ContextEx)
-		// build properties to evaluate, context of to be created component will do it again, dup?
-		inheritProps := context.GetScopeContext().GetScope().CopyProperties()
-		inheritProps.Update(props)
-		key := propsEval(inheritProps)
-		if key == nil {
-			panic(fmt.Errorf("evaluated component implementation key should never be nil"))
-		}
-		context.GetLogger().Debugf("Get component implementation for type: %s %s", interfaceType.FullName(), inheritProps.String())
-		factoryMethod := implHub.GetImplementation(key)
-		return factoryMethod(context, interfaceType, props)
-	}, interfaceType)
+func (cc *DefaultComponentCollection) CreateComponentHub(creator func(context Context, provider ContextualProvider) any) any {
+	return creator(cc.context, cc.cm)
 }
+func (cc *DefaultComponentCollection) AddComponent(createInstance FactoryMethod, compType types.DataType) {
+	cc.cm.AddComponent(createInstance, compType)
+}
+
 func (cc *DefaultComponentCollection) IsComponentRegistered(componentType types.DataType) bool {
 	return cc.cm.IsComponentRegistered(componentType)
 }

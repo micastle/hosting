@@ -6,7 +6,6 @@ import (
 
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/dep"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/logger"
-	"goms.io/azureml/mir/mir-vmagent/pkg/host/test"
 	"goms.io/azureml/mir/mir-vmagent/pkg/host/types"
 )
 
@@ -53,7 +52,7 @@ func Test_Host_context(t *testing.T) {
 
 	builder := createHostBuilder()
 	builder.SetHostName(hostName)
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.AddConfiguration(&TestConfig{})
 		dep.RegisterTransient[AnotherInterface](components, NewAnotherStruct)
 	})
@@ -197,7 +196,7 @@ func Test_Host_components(t *testing.T) {
 
 	builder := createHostBuilder()
 	builder.SetHostName(hostName)
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		components.RegisterSingletonForTypes(NewActualStruct, types.Get[FirstInterface](), types.Get[SecondInterface]())
 		dep.RegisterTransient[AnotherInterface](components, NewAnotherStruct)
 		dep.RegisterSingleton[Component](components, NewComponent)
@@ -240,7 +239,7 @@ func Test_Host_processor(t *testing.T) {
 	builder.UseComponentProvider(func(context BuilderContext, options *dep.ComponentProviderOptions) {
 		options.AllowTypeAnyFromFactoryMethod = true
 	})
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		RegisterFuncProcessor[TestFuncProc](components, procFunc)
 	})
 
@@ -267,11 +266,11 @@ func Test_Host_multi_implementations(t *testing.T) {
 
 	builder := createHostBuilder()
 	builder.SetHostName(hostName)
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterComponent[Downloader](
 			components,
-			func(props dep.Properties) interface{} { return props.Get("type") },
-			func(comp dep.CompImplCollection) {
+			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
+			func(comp dep.CompImplCollection[string]) {
 				comp.AddImpl("url", NewUrlDownloader)
 				comp.AddImpl("blob", NewBlobDownloader)
 			},
@@ -298,50 +297,50 @@ func Test_Host_multi_implementations(t *testing.T) {
 	}
 }
 
-func Test_Host_multi_implementations_evaluator_negative(t *testing.T) {
-	hostName := "Test"
+// func Test_Host_multi_implementations_evaluator_negative(t *testing.T) {
+// 	hostName := "Test"
 
-	builder := createHostBuilder()
-	builder.SetHostName(hostName)
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
-		dep.RegisterComponent[Downloader](
-			components,
-			func(props dep.Properties) interface{} { return nil },
-			func(comp dep.CompImplCollection) {
-				comp.AddImpl("url", NewUrlDownloader)
-				comp.AddImpl("blob", NewBlobDownloader)
-			},
-		)
-	})
+// 	builder := createHostBuilder()
+// 	builder.SetHostName(hostName)
+// 	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
+// 		dep.RegisterComponent[Downloader](
+// 			components,
+// 			func(props dep.Properties) interface{} { return nil },
+// 			func(comp dep.CompImplCollection) {
+// 				comp.AddImpl("url", NewUrlDownloader)
+// 				comp.AddImpl("blob", NewBlobDownloader)
+// 			},
+// 		)
+// 	})
 
-	host := builder.Build()
-	if host.GetName() != hostName {
-		t.Errorf("host name is not expected - %v", host.GetName())
-	}
+// 	host := builder.Build()
+// 	if host.GetName() != hostName {
+// 		t.Errorf("host name is not expected - %v", host.GetName())
+// 	}
 
-	log := host.GetLogger()
-	log.Info("log one line using default logging")
+// 	log := host.GetLogger()
+// 	log.Info("log one line using default logging")
 
-	provider := host.GetComponentProvider().(dep.ComponentProviderEx)
+// 	provider := host.GetComponentProvider().(dep.ComponentProviderEx)
 
-	for _, Type := range []string{"url", "blob"} {
-		defer test.AssertPanicContent(t, "evaluated component implementation key should never be nil", "panic content is not expected")
+// 	for _, Type := range []string{"url", "blob"} {
+// 		defer test.AssertPanicContent(t, "evaluated component implementation key should never be nil", "panic content is not expected")
 
-		downloader := dep.CreateComponent[Downloader](provider, dep.Props(dep.Pair("type", Type)))
-		downloader.Download()
-	}
-}
+// 		downloader := dep.CreateComponent[Downloader](provider, dep.Props(dep.Pair("type", Type)))
+// 		downloader.Download()
+// 	}
+// }
 
 func Test_Host_multi_impl_singleton(t *testing.T) {
 	hostName := "Test"
 
 	builder := createHostBuilder()
 	builder.SetHostName(hostName)
-	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollectionEx) {
+	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterComponent[Downloader](
 			components,
-			func(props dep.Properties) interface{} { return props.Get("type") },
-			func(comp dep.CompImplCollection) {
+			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
+			func(comp dep.CompImplCollection[string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)

@@ -23,7 +23,7 @@ func prepareActivatorWithProperties(debug bool, props dep.Properties, configureC
 }
 
 func Test_Activator_basic(t *testing.T) {
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterTransient[AnotherInterface](components, NewAnotherStruct)
 	}
 	avt := prepareActivator(registerComponents)
@@ -33,7 +33,7 @@ func Test_Activator_basic(t *testing.T) {
 }
 
 func runTest_Activator_extended_debug_defaultlogging(t *testing.T, debug bool, loggerFactory logger.LoggerFactory) {
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterTransient[AnotherInterface](components, NewAnotherStruct)
 	}
 	avt := prepareActivatorInMode(debug, registerComponents, loggerFactory)
@@ -130,11 +130,11 @@ func Test_Activator_sys_component(t *testing.T) {
 }
 
 func Test_Activator_multi_implementations(t *testing.T) {
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterComponent[Downloader](
 			components,
-			func(props dep.Properties) interface{} { return props.Get("type") },
-			func(comp dep.CompImplCollection) {
+			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
+			func(comp dep.CompImplCollection[string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -166,11 +166,11 @@ func Test_Activator_multi_implementations(t *testing.T) {
 }
 
 func Test_Activator_multi_implementations_from_inheritprops(t *testing.T) {
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterComponent[Downloader](
 			components,
-			func(props dep.Properties) interface{} { return props.Get("type") },
-			func(comp dep.CompImplCollection) {
+			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
+			func(comp dep.CompImplCollection[string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -192,11 +192,11 @@ func Test_Activator_multi_implementations_from_inheritprops(t *testing.T) {
 }
 
 func Test_Activator_multi_implementations_overwrite_inheritprops(t *testing.T) {
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterComponent[Downloader](
 			components,
-			func(props dep.Properties) interface{} { return props.Get("type") },
-			func(comp dep.CompImplCollection) {
+			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
+			func(comp dep.CompImplCollection[string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -220,11 +220,11 @@ func Test_Activator_multi_implementations_overwrite_inheritprops(t *testing.T) {
 func Test_Activator_multi_implementations_props_missing(t *testing.T) {
 	defer test.AssertPanicContent(t, "property \"type\" not exist", "panic content not expected")
 
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterComponent[Downloader](
 			components,
-			func(props dep.Properties) interface{} { return props.Get("type") },
-			func(comp dep.CompImplCollection) {
+			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
+			func(comp dep.CompImplCollection[string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -248,11 +248,11 @@ func Test_Activator_multi_implementations_props_missing(t *testing.T) {
 func Test_Activator_multi_implementations_impl_missing(t *testing.T) {
 	defer test.AssertPanicContent(t, "component(avt.Downloader) implementation not exist for key not_exist", "panic content not expected")
 
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterComponent[Downloader](
 			components,
-			func(props dep.Properties) interface{} { return props.Get("type") },
-			func(comp dep.CompImplCollection) {
+			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
+			func(comp dep.CompImplCollection[string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -274,7 +274,7 @@ func Test_Activator_multi_implementations_impl_missing(t *testing.T) {
 }
 
 func Test_Activator_scopefactory(t *testing.T) {
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterTransient[ScopeInterface](components, NewScopeStruct)
 	}
 	avt := prepareActivator(registerComponents)
@@ -297,7 +297,7 @@ func Test_Activator_scopefactory(t *testing.T) {
 }
 
 func Test_Activator_scopectxt(t *testing.T) {
-	registerComponents := func(context BuilderContext, components dep.ComponentCollectionEx) {
+	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
 		dep.RegisterTransient[ScopeInterface](components, NewScopeStruct)
 	}
 	avt := prepareActivator(registerComponents)

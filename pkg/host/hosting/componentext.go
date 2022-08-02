@@ -20,7 +20,7 @@ func createFuncProcess[T FunctionProcessor](dependent dep.Context, processorFunc
 	return createFuncProcessor(dependent, types.Get[T](), actionMethod).(T)
 }
 
-func RegisterFuncProcessor[T FunctionProcessor](collection dep.ComponentCollectionEx, processorFunc dep.FreeStyleProcessorMethod) {
+func RegisterFuncProcessor[T FunctionProcessor](collection dep.ComponentCollection, processorFunc dep.FreeStyleProcessorMethod) {
 	createProcessor := func(context dep.Context) T {
 		return createFuncProcess[T](context, processorFunc)
 	}
