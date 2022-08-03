@@ -7,11 +7,12 @@ import (
 )
 
 type Properties interface {
+	Count() int
 	Keys() []string
-	Get(key string) interface{}
+	Get(key string) any
 	Has(key string) bool
 
-	Set(key string, value interface{})
+	Set(key string, value any)
 	Update(Properties)
 
 	String() string
@@ -25,12 +26,12 @@ func SetProp[T any](props Properties, key string, value T) {
 }
 
 type DefaultProperties struct {
-	props map[string]interface{}
+	props map[string]any
 }
 
 func NewProperties() *DefaultProperties {
 	return &DefaultProperties{
-		props: make(map[string]interface{}),
+		props: make(map[string]any),
 	}
 }
 func NewPropertiesFrom(props Properties) *DefaultProperties {
@@ -63,6 +64,9 @@ func (p *DefaultProperties) String() string {
 	sort.Strings(props)
 	return "{" + strings.Join(props, ",") + "}"
 }
+func (p *DefaultProperties) Count() int {
+	return len(p.props)
+}
 func (p *DefaultProperties) Keys() []string {
 	keys := make([]string, 0, len(p.props))
 	for key, _ := range p.props {
@@ -74,23 +78,23 @@ func (p *DefaultProperties) Has(key string) bool {
 	_, exist := p.props[key]
 	return exist
 }
-func (p *DefaultProperties) Get(key string) interface{} {
+func (p *DefaultProperties) Get(key string) any {
 	val, exist := p.props[key]
 	if !exist {
 		panic(fmt.Errorf("property \"%s\" not exist", key))
 	}
 	return val
 }
-func (p *DefaultProperties) Set(key string, val interface{}) {
+func (p *DefaultProperties) Set(key string, val any) {
 	p.props[key] = val
 }
 
 type PropertyPair struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
-func Pair(key string, val interface{}) *PropertyPair {
+func Pair(key string, val any) *PropertyPair {
 	return &PropertyPair{
 		Key:   key,
 		Value: val,

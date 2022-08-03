@@ -88,7 +88,7 @@ func (hc *DefaultHostContext) GetTracker() dep.DependencyTracker {
 func (cc *DefaultHostContext) UpdateProperties(props dep.Properties) {
 }
 func (cc *DefaultHostContext) GetProperties() dep.Properties {
-	return nil
+	return cc.scopeCtxt.GetScope().CopyProperties()
 }
 
 func (hc *DefaultHostContext) GetRawContext() context.Context {

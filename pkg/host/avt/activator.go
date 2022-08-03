@@ -9,7 +9,7 @@ import (
 type ConfigureComponentsMethod func(context BuilderContext, components dep.ComponentCollection)
 
 type Activator interface {
-	GetProvider() dep.ComponentProvider
+	GetProvider() dep.ComponentProviderEx
 }
 
 func GetComponent[T any](avt Activator) T {
@@ -88,7 +88,7 @@ func (da *DefaultActivator) getRegisteredCount() int {
 }
 
 // public APIs
-func (da *DefaultActivator) GetProvider() dep.ComponentProvider {
+func (da *DefaultActivator) GetProvider() dep.ComponentProviderEx {
 	return da.hostContext
 }
 

@@ -82,7 +82,7 @@ func (sc *DefaultServiceContext) UpdateProperties(props dep.Properties) {
 	}
 }
 func (sc *DefaultServiceContext) GetProperties() dep.Properties {
-	return sc.props
+	return dep.NewPropertiesFrom(sc.props)
 }
 
 func (sc *DefaultServiceContext) GetLoggerFactory() logger.LoggerFactory {

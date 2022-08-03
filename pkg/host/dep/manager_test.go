@@ -510,6 +510,41 @@ func TestComponentManager_Singleton_custom_context(t *testing.T) {
 	}
 }
 
+func TestComponentManager_Singleton_custom_context_dup(t *testing.T) {
+	defer test.AssertPanicContent(t, "dependency type (dep.ScopeContext) already exist", "panic content not expected")
+
+	options := NewComponentProviderOptions(InterfaceType, StructType)
+	options.AllowTypeAnyFromFactoryMethod = true
+	options.EnableSingletonConcurrency = false
+	cm, ctxt := prepareComponentManagerWithOptions(options)
+
+	compType := types.Get[AnotherInterface]()
+	createCtxt := func(scopeCtxt ScopeContextEx) ContextEx {
+		serviceCtxt := NewFakeServiceContext(cm, scopeCtxt)
+		AddDependency[Context](serviceCtxt, Getter[Context](serviceCtxt))
+		AddDependency[ComponentContext](serviceCtxt, Getter[ComponentContext](serviceCtxt))
+		AddDependency[logger.Logger](serviceCtxt, func() logger.Logger { return serviceCtxt.GetLogger() })
+		AddDependency[Properties](serviceCtxt, func() Properties { return serviceCtxt.GetProperties() })
+		AddDependency[ScopeContext](serviceCtxt, func() ScopeContext { return serviceCtxt.GetScopeContext() })
+		AddDependency[ScopeContext](serviceCtxt, func() ScopeContext { return scopeCtxt })
+		return serviceCtxt
+	}
+
+	cm.AddSingletonWithContext(NewAnotherStruct, createCtxt, compType)
+
+	ctxt1 := createNewContext(ctxt, ScopeTest)
+	inst1 := Test_GetComponent[AnotherInterface](cm, ctxt1)
+	ctxtName := inst1.GetContext().Name()
+	if ctxtName != "Fake_Name" {
+		t.Errorf("customized context is not created for singleton: %s", ctxtName)
+	}
+
+	dep := GetComponent[ComponentContext](inst1.GetContext())
+	if dep.Type() != "Service" {
+		t.Errorf("dependency of customized context is not injected for singleton: %s", dep.Type())
+	}
+}
+
 func TestComponentManager_RegisterSingleton_duplicate(t *testing.T) {
 	defer test.AssertPanicContent(t, "specified component type already exist:", "panic content not expected")
 
@@ -592,6 +627,9 @@ func TestComponentManager_Context_getProperties_transient(t *testing.T) {
 
 	RegisterTransient[AnotherInterface](cm, func(ctxt Context) interface{} {
 		props := GetComponent[Properties](ctxt)
+		if props.Count() != 1 {
+			t.Errorf("props count is not expected: %d", props.Count())
+		}
 		name := GetProp[string](props, "name")
 		if name != "test" {
 			t.Errorf("not expected prop name: %s", name)

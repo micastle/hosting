@@ -11,10 +11,10 @@ func TestComponent_multi_implementations(t *testing.T) {
 	cm, ctxt := prepareComponentManager(true)
 	components, provider := createCollection(ctxt, cm)
 
-	RegisterComponent[Downloader](
+	RegisterComponent(
 		components,
 		func(props Properties) string { return GetProp[string](props, "type") },
-		func(comp CompImplCollection[string]) {
+		func(comp CompImplCollection[Downloader, string]) {
 			comp.AddImpl("url", NewUrlDownloader)
 			comp.AddImpl("blob", NewBlobDownloader)
 		},
@@ -55,10 +55,10 @@ func TestComponent_multi_implementations_key_not_exist(t *testing.T) {
 	cm, ctxt := prepareComponentManager(true)
 	components, provider := createCollection(ctxt, cm)
 
-	RegisterComponent[Downloader](
+	RegisterComponent(
 		components,
 		func(props Properties) string { return GetProp[string](props, "type") },
-		func(comp CompImplCollection[string]) {
+		func(comp CompImplCollection[Downloader, string]) {
 			comp.AddImpl("url", NewUrlDownloader)
 			comp.AddImpl("blob", NewBlobDownloader)
 		},
@@ -74,10 +74,10 @@ func TestComponent_multi_impl_singleton(t *testing.T) {
 	cm, ctxt := prepareComponentManager(true)
 	components, provider := createCollection(ctxt, cm)
 
-	RegisterComponent[Downloader](
+	RegisterComponent(
 		components,
 		func(props Properties) string { return GetProp[string](props, "type") },
-		func(comp CompImplCollection[string]) {
+		func(comp CompImplCollection[Downloader, string]) {
 			compType := comp.GetComponentType()
 			fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 			comp.AddSingletonImpl("url", NewUrlDownloader)

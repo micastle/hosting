@@ -10,20 +10,31 @@ There are several kinds of context in hosting framework.
 
 In addition to all registered components, there are below contextual dependencies available during component instance creation:
 
-- Component Context itself
-- [TODO] Logger
+- Context: Component Context itself
+- Logger: a logger instance specifically for corresponding component
+- Properties: property set of the component, a copy of the original property set thus it is logically **read-only**.
+- ScopeContext: context of the scope where the component lives in.
+- ComponentProviderEx: a provider instance which can be used to resolve other dependents dynamically.
 
 ### Service Context
 
 In addition to all registered components, there are below contextual dependencies available during service instance creation:
 
-- Service Context itself
-- Component Context: service is a kind of component, so component context is also available.
-- [TODO] Logger
+- Context: Service Context itself
+- ServiceContext: Service Context itself
+- Logger: a logger instance specifically for corresponding component
+- Properties: property set of the component, a copy of the original property set thus it is logically **read-only**.
+- ScopeContext: context of the scope where the component lives in.
+- ComponentProviderEx: a provider instance which can be used to resolve other dependents dynamically.
 
 ### Host Context
 
+In addition to all registered components, there are below contextual dependencies available on host context:
 
+- Context: Component Context itself
+- Logger: a logger instance specifically for corresponding component
+- Properties: property set of the component, a copy of the original property set thus it is logically **read-only**.
+- ScopeContext: context of the scope where the component lives in.
 
 
 
