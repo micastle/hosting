@@ -52,16 +52,16 @@ Here is an hello world example to show how to use the framework:
 
 [Helloworld](./samples/Helloworld.md)
 
-[Console Application](./samples/Console Application.md)
+[Console Application](./samples/Console%20Application.md)
 
-[Activator Sample](./samples/Activator Sample.md)
+[Activator Sample](./samples/Activator%20Sample.md)
 
 ### Diagnostic Support
 
 Tools:
 
 - [Diagnose Issues](./howto/DiagnoseIssues.md)
-- [Cyclic Dependency Detection](./concepts/DependencyInjection.md#Cyclic Dependency Detection)
+- [Cyclic Dependency Detection](./concepts/DependencyInjection.md)
 
 
 
