@@ -107,18 +107,24 @@ func Test_Host_context(t *testing.T) {
 		t.Errorf("host context should not have parent context: name -%s, type - %s, scopeId - %s", parentCtxt.Type(), parentCtxt.Name(), parentCtxt.ScopeId())
 	}
 
+	result := hostCtxt.GetProperties()
+	if result == nil {
+		t.Errorf("host properties should not be nil: %p", result)
+	} else {
+		cnt := result.Count()
+		if cnt > 0 {
+			t.Errorf("host context props should not have any props, actual - %d", cnt)
+		}
+	}
+
 	props := dep.Props(dep.Pair("key1", 1), dep.Pair("key2", 2))
 	hostCtxt.UpdateProperties(props)
 	props = dep.Props(dep.Pair("key2", 3), dep.Pair("key3", 4))
 	hostCtxt.UpdateProperties(props)
-	result := hostCtxt.GetProperties()
-	if result != nil {
-		t.Errorf("host properties is not supported, must be nil: %p", result)
+
+	if result.Has("key2") {
+		t.Errorf("host context props should not be updated")
 	}
-	// val := result.Get("key2").(int)
-	// if val != 3 {
-	// 	t.Errorf("property value is not expected: %d", val)
-	// }
 
 	config := dep.GetConfig[TestConfig](hostCtxt)
 	if config == nil {
@@ -267,10 +273,10 @@ func Test_Host_multi_implementations(t *testing.T) {
 	builder := createHostBuilder()
 	builder.SetHostName(hostName)
 	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
-		dep.RegisterComponent[Downloader](
+		dep.RegisterComponent(
 			components,
 			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
-			func(comp dep.CompImplCollection[string]) {
+			func(comp dep.CompImplCollection[Downloader, string]) {
 				comp.AddImpl("url", NewUrlDownloader)
 				comp.AddImpl("blob", NewBlobDownloader)
 			},
@@ -337,10 +343,10 @@ func Test_Host_multi_impl_singleton(t *testing.T) {
 	builder := createHostBuilder()
 	builder.SetHostName(hostName)
 	builder.ConfigureComponents(func(context BuilderContext, components dep.ComponentCollection) {
-		dep.RegisterComponent[Downloader](
+		dep.RegisterComponent(
 			components,
 			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
-			func(comp dep.CompImplCollection[string]) {
+			func(comp dep.CompImplCollection[Downloader, string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)

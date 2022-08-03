@@ -1,6 +1,6 @@
 # Component
 
-Component is a very generic concept in hosting framework. Anything can be a component, so we don't have an explicit interface for component type. 
+Component is a very generic concept in hosting framework. Anything can be a component, so we don't have an explicit interface for component type. But on the other side, a specific component must have a type for it. And we use a component type to specifically identify a component in the framework.
 
 You can take interface of Component as below:
 
@@ -48,3 +48,32 @@ components.RegisterSingletonForTypes(NewMyComponent, types.Of(new(TypeA)), types
 ```
 
 It is recommended to do it in this way. It may not result in single instance if you register for each type separately in three calls.
+
+
+
+## Multi-implementation Support
+
+One component type is identified as the interface of the component. But you can provide multiple implementations for the same component type. When resolving for component of that specific type, implementation of that component type is chosen dynamically at runtime depending on implementation key from the given evaluator and the set of registered implementations.
+
+Below API is used to register multiple implementations for a component type:
+
+```go
+func RegisterComponent[T any, K comparable](components ComponentCollection, propsEval Evaluator[K], configure ConfigureImpls[T, K])
+```
+
+Sample below shows how to register a Downloader component with different implementations using a property "type":
+
+```go
+// register component Downloader with two implementations to component collection.
+RegisterComponent[Downloader](
+    components,
+    func(props Properties) string { return GetProp[string](props, "type") },
+    func(comp CompImplCollection[Downloader, string]) {
+        comp.AddImpl("url", NewUrlDownloader)
+        comp.AddImpl("blob", NewBlobDownloader)
+    },
+)
+// resolve a downloader from component provider.
+downloader := CreateComponent[Downloader](provider, Props(Pair("type", Type)))
+```
+

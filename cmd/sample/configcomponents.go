@@ -31,9 +31,9 @@ func ConfigureComponents(context hosting.BuilderContext, components dep.Componen
 		component.Print()
 	})
 
-	dep.RegisterComponent[Downloader](components,
+	dep.RegisterComponent(components,
 		func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
-		func(comp dep.CompImplCollection[string]) {
+		func(comp dep.CompImplCollection[Downloader, string]) {
 			comp.AddImpl("url", NewUrlDownloader)
 			comp.AddImpl("blob", NewBlobDownloader)
 		},

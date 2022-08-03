@@ -131,10 +131,10 @@ func Test_Activator_sys_component(t *testing.T) {
 
 func Test_Activator_multi_implementations(t *testing.T) {
 	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
-		dep.RegisterComponent[Downloader](
+		dep.RegisterComponent(
 			components,
 			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
-			func(comp dep.CompImplCollection[string]) {
+			func(comp dep.CompImplCollection[Downloader, string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -167,10 +167,10 @@ func Test_Activator_multi_implementations(t *testing.T) {
 
 func Test_Activator_multi_implementations_from_inheritprops(t *testing.T) {
 	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
-		dep.RegisterComponent[Downloader](
+		dep.RegisterComponent(
 			components,
 			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
-			func(comp dep.CompImplCollection[string]) {
+			func(comp dep.CompImplCollection[Downloader, string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -193,10 +193,10 @@ func Test_Activator_multi_implementations_from_inheritprops(t *testing.T) {
 
 func Test_Activator_multi_implementations_overwrite_inheritprops(t *testing.T) {
 	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
-		dep.RegisterComponent[Downloader](
+		dep.RegisterComponent(
 			components,
 			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
-			func(comp dep.CompImplCollection[string]) {
+			func(comp dep.CompImplCollection[Downloader, string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -221,10 +221,10 @@ func Test_Activator_multi_implementations_props_missing(t *testing.T) {
 	defer test.AssertPanicContent(t, "property \"type\" not exist", "panic content not expected")
 
 	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
-		dep.RegisterComponent[Downloader](
+		dep.RegisterComponent(
 			components,
 			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
-			func(comp dep.CompImplCollection[string]) {
+			func(comp dep.CompImplCollection[Downloader, string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)
@@ -249,10 +249,10 @@ func Test_Activator_multi_implementations_impl_missing(t *testing.T) {
 	defer test.AssertPanicContent(t, "component(avt.Downloader) implementation not exist for key not_exist", "panic content not expected")
 
 	registerComponents := func(context BuilderContext, components dep.ComponentCollection) {
-		dep.RegisterComponent[Downloader](
+		dep.RegisterComponent(
 			components,
 			func(props dep.Properties) string { return dep.GetProp[string](props, "type") },
-			func(comp dep.CompImplCollection[string]) {
+			func(comp dep.CompImplCollection[Downloader, string]) {
 				compType := comp.GetComponentType()
 				fmt.Printf("multi-impl componnent type: %s\n", compType.FullName())
 				comp.AddSingletonImpl("url", NewUrlDownloader)

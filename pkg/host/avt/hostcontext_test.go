@@ -66,10 +66,6 @@ func Test_Host_context(t *testing.T) {
 		t.Errorf("host context should not have parent context: name -%s, type - %s, scopeId - %s", parentCtxt.Type(), parentCtxt.Name(), parentCtxt.ScopeId())
 	}
 
-	props := dep.Props(dep.Pair("key1", 1), dep.Pair("key2", 2))
-	hostCtxt.UpdateProperties(props)
-	props = dep.Props(dep.Pair("key2", 3), dep.Pair("key3", 4))
-	hostCtxt.UpdateProperties(props)
 	result := hostCtxt.GetProperties()
 	if result == nil {
 		t.Error("unexpected nil properties")
@@ -80,10 +76,13 @@ func Test_Host_context(t *testing.T) {
 		}
 	}
 
-	// val := result.Get("key2").(int)
-	// if val != 3 {
-	// 	t.Errorf("property value is not expected: %d", val)
-	// }
+	props := dep.Props(dep.Pair("key1", 1), dep.Pair("key2", 2))
+	hostCtxt.UpdateProperties(props)
+	props = dep.Props(dep.Pair("key2", 3), dep.Pair("key3", 4))
+	hostCtxt.UpdateProperties(props)
+	if result.Has("key2") {
+		t.Errorf("host context props should not be updated")
+	}
 
 	config := dep.GetConfig[TestConfig](hostCtxt)
 	if config == nil {

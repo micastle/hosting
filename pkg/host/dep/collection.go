@@ -5,6 +5,7 @@ import (
 )
 
 type FactoryMethod func(context Context, interfaceType types.DataType, props Properties) any
+type TypedFactoryMethod[T any] func(context Context, interfaceType types.DataType, props Properties) T
 
 // required type: func(...) interface{} {}
 type FreeStyleFactoryMethod interface{}
@@ -45,14 +46,13 @@ func IsComponentRegistered[T any](collection ComponentCollection) bool {
 }
 
 type Evaluator[K comparable] func(props Properties) K
-type ConfigureImpls[K comparable] func(CompImplCollection[K])
+type ConfigureImpls[T any, K comparable] func(CompImplCollection[T, K])
 
-func RegisterComponent[T any, K comparable](components ComponentCollection, propsEval Evaluator[K], configure ConfigureImpls[K]) {
-	compType := types.Get[T]()
+func RegisterComponent[T any, K comparable](components ComponentCollection, propsEval Evaluator[K], configure ConfigureImpls[T, K]) {
 	collection := components.(ComponentCollectionEx)
-	implHub := createComponentHub[K](collection, compType)
+	implHub := createComponentHub[T, K](collection)
 	configure(implHub)
-	collection.AddComponent(func(dependent Context, interfaceType types.DataType, props Properties) any {
+	addComponent(collection, func(dependent Context, interfaceType types.DataType, props Properties) T {
 		context := dependent.(ContextEx)
 		// build properties to evaluate, context of to be created component will do it again, dup?
 		inheritProps := context.GetScopeContext().GetScope().CopyProperties()
@@ -60,8 +60,8 @@ func RegisterComponent[T any, K comparable](components ComponentCollection, prop
 		key := propsEval(inheritProps)
 		context.GetLogger().Debugf("Get implementation for type %s, key: %v from %s", interfaceType.FullName(), key, inheritProps.String())
 		factoryMethod := implHub.GetImplementation(key)
-		return factoryMethod(context, interfaceType, props)
-	}, compType)
+		return factoryMethod(context, interfaceType, props).(T)
+	})
 }
 
 type ComponentCollectionEx interface {
@@ -72,10 +72,16 @@ type ComponentCollectionEx interface {
 	AddComponent(FactoryMethod, types.DataType)
 }
 
-func createComponentHub[K comparable](collection ComponentCollectionEx, compType types.DataType) ComponentHub[K] {
+func addComponent[T any](collection ComponentCollectionEx, createInstance TypedFactoryMethod[T]) {
+	collection.AddComponent(func(context Context, interfaceType types.DataType, props Properties) any {
+		return createInstance(context, interfaceType, props)
+	}, types.Get[T]())
+}
+
+func createComponentHub[T any, K comparable](collection ComponentCollectionEx) ComponentHub[T, K] {
 	implHub := collection.CreateComponentHub(func(context Context, provider ContextualProvider) any {
-		return NewComponentImplHub[K](context, provider, compType)
-	}).(ComponentHub[K])
+		return NewComponentImplHub[T, K](context, provider)
+	}).(ComponentHub[T, K])
 	return implHub
 }
 
